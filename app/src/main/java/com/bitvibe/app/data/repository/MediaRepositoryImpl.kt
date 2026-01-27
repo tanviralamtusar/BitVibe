@@ -33,7 +33,6 @@ class MediaRepositoryImpl @Inject constructor(
         }
     }
 
-
     override fun getAllFolders(): Flow<List<Folder>> = _folders.asStateFlow()
 
     override suspend fun scanMedia() = withContext(Dispatchers.IO) {

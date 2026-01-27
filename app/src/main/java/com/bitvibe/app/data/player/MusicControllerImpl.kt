@@ -8,6 +8,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.bitvibe.app.data.model.AudioFile
@@ -29,13 +30,16 @@ import javax.inject.Singleton
 
 @Singleton
 class MusicControllerImpl @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val exoPlayer: ExoPlayer
 ) : MusicController {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     
     private var mediaControllerFuture: ListenableFuture<MediaController>? = null
     private var mediaController: MediaController? = null
+    
+    private var equalizerInitialized = false
 
     private val _isPlaying = MutableStateFlow(false)
     override val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
@@ -54,6 +58,21 @@ class MusicControllerImpl @Inject constructor(
                 Log.e("MusicController", "Error getting media controller", e)
             }
         }, MoreExecutors.directExecutor())
+        
+        // Also add listener directly to ExoPlayer for audio session
+        exoPlayer.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_READY && !equalizerInitialized) {
+                    val sessionId = exoPlayer.audioSessionId
+                    if (sessionId != C.AUDIO_SESSION_ID_UNSET && sessionId != 0) {
+                        Log.d("MusicController", "Initializing EQ from ExoPlayer with session: $sessionId")
+                        initEqualizer(sessionId)
+                        initVisualizer(sessionId)
+                        equalizerInitialized = true
+                    }
+                }
+            }
+        })
     }
 
     private fun setupController() {
@@ -78,8 +97,11 @@ class MusicControllerImpl @Inject constructor(
             }
             
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
-                initEqualizer(audioSessionId)
-                initVisualizer(audioSessionId)
+                if (audioSessionId != C.AUDIO_SESSION_ID_UNSET && audioSessionId != 0) {
+                    initEqualizer(audioSessionId)
+                    initVisualizer(audioSessionId)
+                    equalizerInitialized = true
+                }
             }
         })
         
@@ -89,10 +111,14 @@ class MusicControllerImpl @Inject constructor(
         _repeatMode.value = controller.repeatMode
         updateCurrentSong(controller.currentMediaItem)
         
-        // Try to init if already set
-        // Note: accessing audioSessionId might throw if not ready? Safe to check.
-        // initEqualizer(controller.deviceInfo...) - MediaController doesn't expose audioSessionId directly in same way?
-        // Actually it might be transient. The listener is best.
+        // Try to init EQ if player is already ready
+        val sessionId = exoPlayer.audioSessionId
+        if (sessionId != C.AUDIO_SESSION_ID_UNSET && sessionId != 0 && !equalizerInitialized) {
+            Log.d("MusicController", "Initializing EQ from setupController with session: $sessionId")
+            initEqualizer(sessionId)
+            initVisualizer(sessionId)
+            equalizerInitialized = true
+        }
     }
 
     private fun updateCurrentSong(mediaItem: MediaItem?) {
@@ -213,7 +239,7 @@ class MusicControllerImpl @Inject constructor(
         _loopMode.value = !_loopMode.value
     }
     
-    // Polling for Position & Loop Check
+    // Polling for Position & Loop Check (Adaptive polling for efficiency)
     init {
         scope.launch {
             while (true) {
@@ -233,7 +259,13 @@ class MusicControllerImpl @Inject constructor(
                         }
                     }
                 }
-                kotlinx.coroutines.delay(50L) // 20Hz update
+                // Adaptive polling: faster when looping (for precise loop points), slower otherwise
+                val pollingDelay = if (_loopMode.value && _loopStart.value != null && _loopEnd.value != null) {
+                    50L // 20Hz for precise A-B loop
+                } else {
+                    100L // 10Hz for normal playback (saves CPU)
+                }
+                kotlinx.coroutines.delay(pollingDelay)
             }
         }
     }
@@ -369,6 +401,23 @@ class MusicControllerImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e("MusicController", "Error initializing visualizer", e)
+        }
+    }
+    
+    // Lifecycle cleanup for audio effects
+    fun release() {
+        try {
+            equalizer?.release()
+            equalizer = null
+            visualizer?.release()
+            visualizer = null
+            mediaControllerFuture?.let {
+                MediaController.releaseFuture(it)
+            }
+            mediaController = null
+            Log.d("MusicController", "Released audio effects and controller")
+        } catch (e: Exception) {
+            Log.e("MusicController", "Error releasing resources", e)
         }
     }
 }

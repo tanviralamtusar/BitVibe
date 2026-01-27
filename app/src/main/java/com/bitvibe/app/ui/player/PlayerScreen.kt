@@ -76,6 +76,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import com.bitvibe.app.domain.player.MusicController
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.TransformOrigin
 
 @Composable
 fun PlayerScreen(
@@ -390,24 +392,87 @@ fun PlayerScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Visualizer Card (Moved here)
-                    ProCard(title = "VISUALIZER", icon = Icons.Filled.GraphicEq) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(120.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.background)
-                        ) {
-                             if (waveform.isNotEmpty()) {
-                                VisualizerView(
-                                    waveform = waveform,
-                                    modifier = Modifier.fillMaxSize().padding(16.dp),
-                                    color = MaterialTheme.colorScheme.primary
+                    // Equalizer Card
+                    val equalizerBands by musicController.equalizerBands.collectAsStateWithLifecycle()
+                    ProCard(title = "EQUALIZER", icon = Icons.Filled.GraphicEq) {
+                        if (equalizerBands.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(120.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "Play a song to activate EQ",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                            } else {
-                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text("Playing audio...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        } else {
+                            Column {
+                                // EQ Band Sliders Row
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(140.dp),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    verticalAlignment = Alignment.Bottom
+                                ) {
+                                    equalizerBands.forEach { band ->
+                                        EqBandSlider(
+                                            band = band,
+                                            onValueChange = { level ->
+                                                musicController.setBandLevel(band.id, level)
+                                            }
+                                        )
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.height(12.dp))
+                                
+                                // Preset Buttons Row
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly
+                                ) {
+                                    EqPresetButton("Flat") {
+                                        equalizerBands.forEach { band ->
+                                            musicController.setBandLevel(band.id, 0)
+                                        }
+                                    }
+                                    EqPresetButton("Bass+") {
+                                        equalizerBands.forEachIndexed { index, band ->
+                                            val level = when(index) {
+                                                0 -> (band.maxLevel * 0.7).toInt()
+                                                1 -> (band.maxLevel * 0.5).toInt()
+                                                else -> 0
+                                            }
+                                            musicController.setBandLevel(band.id, level)
+                                        }
+                                    }
+                                    EqPresetButton("Vocal") {
+                                        equalizerBands.forEachIndexed { index, band ->
+                                            val midIndex = equalizerBands.size / 2
+                                            val level = if (index == midIndex || index == midIndex - 1 || index == midIndex + 1) {
+                                                (band.maxLevel * 0.4).toInt()
+                                            } else {
+                                                (band.minLevel * 0.2).toInt()
+                                            }
+                                            musicController.setBandLevel(band.id, level)
+                                        }
+                                    }
+                                    EqPresetButton("Rock") {
+                                        equalizerBands.forEachIndexed { index, band ->
+                                            val level = when(index) {
+                                                0 -> (band.maxLevel * 0.5).toInt()
+                                                1 -> (band.maxLevel * 0.3).toInt()
+                                                equalizerBands.size - 1 -> (band.maxLevel * 0.6).toInt()
+                                                equalizerBands.size - 2 -> (band.maxLevel * 0.4).toInt()
+                                                else -> 0
+                                            }
+                                            musicController.setBandLevel(band.id, level)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -462,6 +527,73 @@ fun ProButton(text: String, active: Boolean, onClick: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Text(text, color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+fun EqBandSlider(
+    band: com.bitvibe.app.domain.player.EqBand,
+    onValueChange: (Int) -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(48.dp)
+    ) {
+        // Vertical Slider using rotation
+        Box(
+            modifier = Modifier
+                .height(100.dp)
+                .width(36.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Slider(
+                value = band.currentLevel.toFloat(),
+                onValueChange = { onValueChange(it.toInt()) },
+                valueRange = band.minLevel.toFloat()..band.maxLevel.toFloat(),
+                colors = SliderDefaults.colors(
+                    thumbColor = MaterialTheme.colorScheme.primary,
+                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                modifier = Modifier
+                    .graphicsLayer {
+                        rotationZ = 270f
+                        transformOrigin = TransformOrigin(0.5f, 0.5f)
+                    }
+                    .width(100.dp)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Frequency Label
+        Text(
+            text = band.name.replace(" Hz", "").let { 
+                val freq = it.toIntOrNull() ?: 0
+                if (freq >= 1000) "${freq/1000}k" else it
+            },
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+fun EqPresetButton(text: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.background)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text, 
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 

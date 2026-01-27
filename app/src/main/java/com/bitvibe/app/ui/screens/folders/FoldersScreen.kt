@@ -13,6 +13,6 @@ fun FoldersScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Text(text = "Folders Screen")
+        Text(text = "Folders Screen - Coming Soon")
     }
 }
