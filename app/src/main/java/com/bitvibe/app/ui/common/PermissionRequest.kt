@@ -1,56 +1,107 @@
 package com.bitvibe.app.ui.common
 
-import android.Manifest
-import android.os.Build
-import androidx.annotation.RequiresApi
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.MusicNote
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.bitvibe.app.ui.theme.BitVibeCyan
+import com.bitvibe.app.ui.theme.DarkBg
+import com.bitvibe.app.ui.theme.TextGrey
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.MultiplePermissionsState
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun PermissionWrapper(
-    content: @Composable () -> Unit
-) {
-    val permissions = if (Build.VERSION.SDK_INT >= 33) {
-        listOf(
-            Manifest.permission.READ_MEDIA_AUDIO,
-            Manifest.permission.POST_NOTIFICATIONS
-        )
+fun PermissionWrapper(content: @Composable () -> Unit) {
+    val permission = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        android.Manifest.permission.READ_MEDIA_AUDIO
     } else {
-        listOf(
-            Manifest.permission.READ_EXTERNAL_STORAGE
-        )
+        android.Manifest.permission.READ_EXTERNAL_STORAGE
     }
 
-    val permissionState = rememberMultiplePermissionsState(permissions = permissions)
+    val permissionState = rememberPermissionState(permission)
 
-    if (permissionState.allPermissionsGranted) {
+    if (permissionState.status.isGranted) {
         content()
     } else {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+        PermissionRequestScreen(
+            onRequestPermission = { permissionState.launchPermissionRequest() }
+        )
+    }
+}
+
+@Composable
+private fun PermissionRequestScreen(onRequestPermission: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DarkBg),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(40.dp)
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = "We need permission to access your music.")
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = { permissionState.launchMultiplePermissionRequest() }) {
-                    Text("Grant Permission")
-                }
+            Icon(
+                imageVector = Icons.Outlined.MusicNote,
+                contentDescription = null,
+                tint = BitVibeCyan,
+                modifier = Modifier.size(80.dp)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "BitVibe",
+                style = MaterialTheme.typography.displayLarge,
+                color = BitVibeCyan
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "Your premium music player",
+                style = MaterialTheme.typography.bodyLarge,
+                color = TextGrey
+            )
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            Text(
+                text = "BitVibe needs access to your music files to play your favorite tracks.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextGrey,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Button(
+                onClick = onRequestPermission,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = BitVibeCyan,
+                    contentColor = Color.Black
+                ),
+                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+            ) {
+                Text(
+                    text = "Grant Permission",
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
         }
     }

@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,35 +26,32 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Loop
-import androidx.compose.material.icons.outlined.AllInclusive
-import androidx.compose.material.icons.outlined.DonutLarge
-import androidx.compose.material.icons.outlined.GraphicEq
-import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.Label
+import androidx.compose.material.icons.outlined.OpenInFull
+import androidx.compose.material.icons.outlined.QueueMusic
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -64,20 +62,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
+import coil.compose.AsyncImage
 import com.bitvibe.app.domain.player.MusicController
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.TransformOrigin
+import com.bitvibe.app.ui.theme.BitVibeCyan
+import com.bitvibe.app.ui.theme.TextGrey
+import com.bitvibe.app.ui.theme.TextMuted
+import com.bitvibe.app.ui.theme.DarkBg
+import com.bitvibe.app.ui.theme.DarkSurface
 
 @Composable
 fun PlayerScreen(
@@ -88,445 +90,499 @@ fun PlayerScreen(
     val currentSong by musicController.currentSong.collectAsStateWithLifecycle()
     val isPlaying by musicController.isPlaying.collectAsStateWithLifecycle()
     val waveform by musicController.waveform.collectAsStateWithLifecycle()
-    
+
     var isProMode by remember { mutableStateOf(false) }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onCollapse) {
-                     Icon(Icons.Filled.Album, contentDescription = "Collapse", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DarkBg)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // ── Top Bar ─────────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 8.dp, top = 48.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "NOW PLAYING",
-                    style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 2.sp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "PLAYING FROM PLAYLIST:",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextGrey,
+                    letterSpacing = 1.sp
                 )
-                
-                IconButton(onClick = { /* TODO: Queue */ }) {
-                     Icon(Icons.Filled.MusicNote, contentDescription = "Queue", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        },
-        bottomBar = {
-             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Pro Mode Toggle - Now a solid Button
-                androidx.compose.material3.Button(
-                    onClick = { isProMode = !isProMode },
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                        containerColor = if (isProMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer,
-                        contentColor = if (isProMode) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-                    ),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        if (isProMode) "PRO MODE ON" else "PRO MODE",
-                        style = MaterialTheme.typography.labelMedium
+                        text = currentSong?.album?.takeIf { it.isNotBlank() } ?: "BitVibe",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = BitVibeCyan,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = " ▾",
+                        color = BitVibeCyan,
+                        fontSize = 12.sp
                     )
                 }
-                
-                IconButton(onClick = onSettingsClick) {
-                    Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.primary)
+            }
+            IconButton(onClick = { /* TODO: more options */ }) {
+                Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = TextGrey)
+            }
+        }
+
+        // ── Album Art ───────────────────────────────────
+        AnimatedVisibility(
+            visible = !isProMode,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 28.dp)
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(DarkSurface),
+                contentAlignment = Alignment.Center
+            ) {
+                if (currentSong?.albumArtUri != null) {
+                    AsyncImage(
+                        model = currentSong?.albumArtUri,
+                        contentDescription = currentSong?.title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        Icons.Filled.MusicNote,
+                        contentDescription = null,
+                        tint = TextMuted,
+                        modifier = Modifier.size(80.dp)
+                    )
                 }
             }
         }
-    ) { innerPadding ->
+
+        Spacer(modifier = Modifier.height(if (isProMode) 8.dp else 20.dp))
+
+        // ── Song Info ───────────────────────────────────
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 24.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxWidth()
+                .padding(horizontal = 28.dp)
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Album Art (Hidden in Pro Mode)
-            AnimatedVisibility(
-                visible = !isProMode,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.85f)
-                        .aspectRatio(1f)
-                        .clip(RoundedCornerShape(32.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainer)
-                ) {
-                     // (Visualizer moved to Pro Mode)
-
-                    
-                    // Central Icon Placeholder
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Filled.Album, 
-                            contentDescription = null, 
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-                            modifier = Modifier.size(80.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(if (isProMode) 12.dp else 48.dp))
-
-            // Info
-            Text(
-                text = currentSong?.title ?: "No Track Playing",
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = currentSong?.artist ?: "BitVibe Player",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Seek Bar with Loop Markers
-            val duration = (currentSong?.duration ?: 1L).coerceAtLeast(1L)
-            val position by musicController.currentPosition.collectAsStateWithLifecycle()
-            val loopStart by musicController.loopStart.collectAsStateWithLifecycle()
-            val loopEnd by musicController.loopEnd.collectAsStateWithLifecycle()
-            
-            Column {
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    // Loop Markers Overlay
-                    if (duration > 0 && (loopStart != null || loopEnd != null)) {
-                        androidx.compose.foundation.Canvas(
-                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(16.dp)
-                                .align(Alignment.Center)
-                        ) {
-                            val width = size.width
-                            val startX = loopStart?.let { (it.toFloat() / duration) * width }
-                            val endX = loopEnd?.let { (it.toFloat() / duration) * width }
-                            
-                            val markerColor = androidx.compose.ui.graphics.Color(0xFF64B5F6) // Use our primary blue explicitly here or get from theme
-                            
-                            if (startX != null) {
-                                drawCircle(color = markerColor, radius = 6.dp.toPx(), center = androidx.compose.ui.geometry.Offset(startX, size.height / 2))
-                            }
-                            if (endX != null) {
-                                drawCircle(color = markerColor, radius = 6.dp.toPx(), center = androidx.compose.ui.geometry.Offset(endX, size.height / 2))
-                            }
-                            
-                            // Draw connecting line if both exist
-                            if (startX != null && endX != null && endX > startX) {
-                                drawLine(
-                                    color = markerColor.copy(alpha = 0.3f),
-                                    start = androidx.compose.ui.geometry.Offset(startX, size.height / 2),
-                                    end = androidx.compose.ui.geometry.Offset(endX, size.height / 2),
-                                    strokeWidth = 4.dp.toPx()
-                                )
-                            }
-                        }
-                    }
-
-                    // Main Seekbar
-                    // Note: Slider colors need to be explicit or derived
-                    val primaryColor = MaterialTheme.colorScheme.primary
-                    Slider(
-                        value = (position.toFloat() / duration).coerceIn(0f, 1f),
-                        onValueChange = { musicController.seekTo((it * duration).toLong()) },
-                        colors = SliderDefaults.colors(
-                            thumbColor = Color.Transparent, 
-                            activeTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha=0.3f), // White/OnSurface track
-                            inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha=0.1f)
-                        ),
-                        modifier = Modifier.fillMaxWidth().height(16.dp)
-                    )
-                }
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(formatTime(position), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(formatTime(duration), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Main Controls
-            val shuffleEnabled by musicController.shuffleModeEnabled.collectAsStateWithLifecycle()
-            val repeatMode by musicController.repeatMode.collectAsStateWithLifecycle()
-            val primaryColor = MaterialTheme.colorScheme.primary
-            val iconTint = MaterialTheme.colorScheme.onSurfaceVariant
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { musicController.toggleShuffleMode() }) {
-                    Icon(Icons.Filled.Shuffle, null, tint = if(shuffleEnabled) primaryColor else iconTint)
-                }
-                
-                IconButton(onClick = { musicController.skipToPrevious() }, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.Filled.SkipPrevious, null, modifier = Modifier.size(32.dp), tint = iconTint)
-                }
-                
-                // Play Button
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainer)
-                        .clickable { musicController.togglePlayPause() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        null,
-                        modifier = Modifier.size(36.dp),
-                        tint = primaryColor
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = currentSong?.title ?: "No Track Playing",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = currentSong?.artist ?: "BitVibe Player",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextGrey,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
-                
-                IconButton(onClick = { musicController.skipToNext() }, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.Filled.SkipNext, null, modifier = Modifier.size(32.dp), tint = iconTint)
+                IconButton(onClick = { /* TODO: share */ }) {
+                    Icon(Icons.Filled.Share, contentDescription = "Share", tint = TextGrey, modifier = Modifier.size(20.dp))
                 }
-                
-                IconButton(onClick = { musicController.toggleRepeatMode() }) {
-                    Icon(
-                        if(repeatMode == Player.REPEAT_MODE_ONE) Icons.Filled.RepeatOne else Icons.Filled.Repeat, 
-                        null, 
-                        tint = if(repeatMode != Player.REPEAT_MODE_OFF) primaryColor else iconTint
-                    )
+                IconButton(onClick = { /* TODO: favorite */ }) {
+                    Icon(Icons.Filled.FavoriteBorder, contentDescription = "Like", tint = TextGrey, modifier = Modifier.size(20.dp))
                 }
             }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            
-            // PRO MODE SECTIONS
-            AnimatedVisibility(
-                visible = isProMode,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
-            ) {
-                Column(modifier = Modifier.padding(top = 32.dp)) {
-                    // A-B Loop Card
-                    ProCard(
-                        title = "A-B LOOP", 
-                        icon = Icons.Filled.Loop,
-                        trailingContent = {
-                            val loopStart by musicController.loopStart.collectAsStateWithLifecycle()
-                            val loopEnd by musicController.loopEnd.collectAsStateWithLifecycle()
-                            if (loopStart != null || loopEnd != null) {
-                                TextButton(onClick = { musicController.clearLoop() }) {
-                                    Text("CLEAR", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                                }
-                            }
-                        }
-                    ) {
-                         val loopStart by musicController.loopStart.collectAsStateWithLifecycle()
-                         val loopEnd by musicController.loopEnd.collectAsStateWithLifecycle()
-                         val loopMode by musicController.loopMode.collectAsStateWithLifecycle()
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            ProButton(text = if(loopStart != null) "A: ${formatTime(loopStart!!)}" else "Set A", active = loopStart != null) { musicController.setLoopStart(position) }
-                            ProButton(text = if(loopEnd != null) "B: ${formatTime(loopEnd!!)}" else "Set B", active = loopEnd != null) { musicController.setLoopEnd(position) }
-                            ProButton(text = "Loop", active = loopMode) { musicController.toggleLoopMode() }
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Speed Card
-                    val speed by musicController.playbackSpeed.collectAsStateWithLifecycle()
-                    ProCard(title = "SPEED", icon = Icons.Filled.Speed) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            IconButton(
-                                onClick = { musicController.setPlaybackSpeed((speed - 0.1f).coerceAtLeast(0.25f)) },
-                                modifier = Modifier.background(MaterialTheme.colorScheme.background, CircleShape)
-                            ) {
-                                Icon(Icons.Filled.Remove, null, tint = MaterialTheme.colorScheme.onSurface)
-                            }
-                            
-                            Text(
-                                "%.2fx".format(speed),
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            
-                            IconButton(
-                                onClick = { musicController.setPlaybackSpeed((speed + 0.1f).coerceAtMost(2.0f)) },
-                                modifier = Modifier.background(MaterialTheme.colorScheme.background, CircleShape)
-                            ) {
-                                Icon(Icons.Filled.Add, null, tint = MaterialTheme.colorScheme.onSurface)
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Equalizer Card
-                    val equalizerBands by musicController.equalizerBands.collectAsStateWithLifecycle()
-                    ProCard(title = "EQUALIZER", icon = Icons.Filled.GraphicEq) {
-                        if (equalizerBands.isEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(120.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    "Play a song to activate EQ",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        } else {
-                            Column {
-                                // EQ Band Sliders Row
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(140.dp),
-                                    horizontalArrangement = Arrangement.SpaceEvenly,
-                                    verticalAlignment = Alignment.Bottom
-                                ) {
-                                    equalizerBands.forEach { band ->
-                                        EqBandSlider(
-                                            band = band,
-                                            onValueChange = { level ->
-                                                musicController.setBandLevel(band.id, level)
-                                            }
-                                        )
-                                    }
-                                }
-                                
-                                Spacer(modifier = Modifier.height(12.dp))
-                                
-                                // Preset Buttons Row
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceEvenly
-                                ) {
-                                    EqPresetButton("Flat") {
-                                        equalizerBands.forEach { band ->
-                                            musicController.setBandLevel(band.id, 0)
-                                        }
-                                    }
-                                    EqPresetButton("Bass+") {
-                                        equalizerBands.forEachIndexed { index, band ->
-                                            val level = when(index) {
-                                                0 -> (band.maxLevel * 0.7).toInt()
-                                                1 -> (band.maxLevel * 0.5).toInt()
-                                                else -> 0
-                                            }
-                                            musicController.setBandLevel(band.id, level)
-                                        }
-                                    }
-                                    EqPresetButton("Vocal") {
-                                        equalizerBands.forEachIndexed { index, band ->
-                                            val midIndex = equalizerBands.size / 2
-                                            val level = if (index == midIndex || index == midIndex - 1 || index == midIndex + 1) {
-                                                (band.maxLevel * 0.4).toInt()
-                                            } else {
-                                                (band.minLevel * 0.2).toInt()
-                                            }
-                                            musicController.setBandLevel(band.id, level)
-                                        }
-                                    }
-                                    EqPresetButton("Rock") {
-                                        equalizerBands.forEachIndexed { index, band ->
-                                            val level = when(index) {
-                                                0 -> (band.maxLevel * 0.5).toInt()
-                                                1 -> (band.maxLevel * 0.3).toInt()
-                                                equalizerBands.size - 1 -> (band.maxLevel * 0.6).toInt()
-                                                equalizerBands.size - 2 -> (band.maxLevel * 0.4).toInt()
-                                                else -> 0
-                                            }
-                                            musicController.setBandLevel(band.id, level)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(32.dp))
         }
-    }
-}
 
-@Composable
-fun ProCard(
-    title: String, 
-    icon: ImageVector, 
-    trailingContent: (@Composable () -> Unit)? = null,
-    content: @Composable () -> Unit
-) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // ── Seekbar (Cyan) ──────────────────────────────
+        val duration = (currentSong?.duration ?: 1L).coerceAtLeast(1L)
+        val position by musicController.currentPosition.collectAsStateWithLifecycle()
+        val loopStart by musicController.loopStart.collectAsStateWithLifecycle()
+        val loopEnd by musicController.loopEnd.collectAsStateWithLifecycle()
+
+        Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+            // Loop markers (above seekbar)
+            if (duration > 0 && (loopStart != null || loopEnd != null)) {
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(14.dp)
+                        .padding(horizontal = 10.dp)
+                ) {
+                    val w = size.width
+                    val startX = loopStart?.let { (it.toFloat() / duration) * w }
+                    val endX = loopEnd?.let { (it.toFloat() / duration) * w }
+                    val path = androidx.compose.ui.graphics.Path()
+                    val triSize = 5.dp.toPx()
+                    if (startX != null) {
+                        path.reset()
+                        path.moveTo(startX, size.height)
+                        path.lineTo(startX - triSize, 0f)
+                        path.lineTo(startX + triSize, 0f)
+                        path.close()
+                        drawPath(path, color = BitVibeCyan)
+                    }
+                    if (endX != null) {
+                        path.reset()
+                        path.moveTo(endX, size.height)
+                        path.lineTo(endX - triSize, 0f)
+                        path.lineTo(endX + triSize, 0f)
+                        path.close()
+                        drawPath(path, color = BitVibeCyan)
+                    }
+                }
+            }
+
+            // Seekbar
+            Slider(
+                value = (position.toFloat() / duration).coerceIn(0f, 1f),
+                onValueChange = { musicController.seekTo((it * duration).toLong()) },
+                colors = SliderDefaults.colors(
+                    thumbColor = Color.White,
+                    activeTrackColor = BitVibeCyan,
+                    inactiveTrackColor = BitVibeCyan.copy(alpha = 0.2f)
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(title, style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp), color = MaterialTheme.colorScheme.onSurface)
-                }
-                trailingContent?.invoke()
+                Text(formatTime(position), style = MaterialTheme.typography.bodySmall, color = TextGrey)
+                Text(formatTime(duration), style = MaterialTheme.typography.bodySmall, color = TextGrey)
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            content()
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // ── Main Controls ───────────────────────────────
+        val shuffleEnabled by musicController.shuffleModeEnabled.collectAsStateWithLifecycle()
+        val repeatMode by musicController.repeatMode.collectAsStateWithLifecycle()
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { musicController.toggleRepeatMode() }) {
+                Icon(
+                    if (repeatMode == Player.REPEAT_MODE_ONE) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+                    null,
+                    tint = if (repeatMode != Player.REPEAT_MODE_OFF) BitVibeCyan else TextGrey,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            IconButton(onClick = { musicController.toggleShuffleMode() }) {
+                Icon(Icons.Filled.Shuffle, null, tint = if (shuffleEnabled) BitVibeCyan else TextGrey, modifier = Modifier.size(24.dp))
+            }
+            IconButton(onClick = { musicController.skipToPrevious() }, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Filled.SkipPrevious, null, modifier = Modifier.size(36.dp), tint = Color.White)
+            }
+
+            // Big cyan play button
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(BitVibeCyan)
+                    .clickable { musicController.togglePlayPause() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    null,
+                    modifier = Modifier.size(32.dp),
+                    tint = Color.Black
+                )
+            }
+
+            IconButton(onClick = { musicController.skipToNext() }, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Filled.SkipNext, null, modifier = Modifier.size(36.dp), tint = Color.White)
+            }
+            IconButton(onClick = { /* TODO: EQ */ }) {
+                Icon(Icons.Filled.GraphicEq, null, tint = TextGrey, modifier = Modifier.size(24.dp))
+            }
+            IconButton(onClick = { /* TODO: add */ }) {
+                Icon(Icons.Filled.Add, null, tint = TextGrey, modifier = Modifier.size(24.dp))
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // ── Pro Toggle ──────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 28.dp),
+            horizontalArrangement = Arrangement.End
+        ) {
+            Text(
+                text = "Pro",
+                style = MaterialTheme.typography.titleMedium,
+                color = if (isProMode) BitVibeCyan else TextGrey,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .clickable { isProMode = !isProMode }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+        }
+
+        // ── Pro Mode Panel ──────────────────────────────
+        AnimatedVisibility(
+            visible = isProMode,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
+                // ── A-B Loop ────────────────────────────
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Filled.Loop, null, tint = BitVibeCyan, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("A-B Loop", style = MaterialTheme.typography.labelMedium, color = Color.White)
+                }
+
+                val loopMode by musicController.loopMode.collectAsStateWithLifecycle()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CyanPillButton(
+                        text = if (loopStart != null) "A: ${formatTime(loopStart!!)}" else "Set A",
+                        active = loopStart != null,
+                        modifier = Modifier.weight(1f)
+                    ) { musicController.setLoopStart(position) }
+                    CyanPillButton(
+                        text = if (loopEnd != null) "B: ${formatTime(loopEnd!!)}" else "Set B",
+                        active = loopEnd != null,
+                        modifier = Modifier.weight(1f)
+                    ) { musicController.setLoopEnd(position) }
+                    CyanPillButton(
+                        text = "Loop",
+                        active = loopMode,
+                        modifier = Modifier.weight(1f)
+                    ) { musicController.toggleLoopMode() }
+                    CyanPillButton(
+                        text = "Reset",
+                        active = false,
+                        modifier = Modifier.weight(1f)
+                    ) { musicController.clearLoop() }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // ── Speed + Equalizer (side by side) ────
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Speed card (left)
+                    val speed by musicController.playbackSpeed.collectAsStateWithLifecycle()
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, BitVibeCyan.copy(alpha = 0.3f))
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Filled.Speed, null, tint = BitVibeCyan, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Speed", style = MaterialTheme.typography.labelSmall, color = Color.White)
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(30.dp)
+                                        .clip(CircleShape)
+                                        .border(1.dp, BitVibeCyan.copy(alpha = 0.5f), CircleShape)
+                                        .clickable { musicController.setPlaybackSpeed((speed - 0.1f).coerceAtLeast(0.25f)) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Filled.Remove, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                }
+                                Text(
+                                    "%.2fx".format(speed),
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = Color.White
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(30.dp)
+                                        .clip(CircleShape)
+                                        .border(1.dp, BitVibeCyan.copy(alpha = 0.5f), CircleShape)
+                                        .clickable { musicController.setPlaybackSpeed((speed + 0.1f).coerceAtMost(2.0f)) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Filled.Add, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
+                    }
+
+                    // Equalizer + actions (right)
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(110.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, BitVibeCyan.copy(alpha = 0.3f))
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(14.dp),
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    "Equalizer",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = BitVibeCyan,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Icon(
+                                    Icons.Outlined.OpenInFull,
+                                    null,
+                                    tint = TextGrey,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            // Action icons row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                Icon(Icons.Outlined.Bedtime, null, tint = TextGrey, modifier = Modifier.size(24.dp))
+                                Icon(Icons.Outlined.Label, null, tint = TextGrey, modifier = Modifier.size(24.dp))
+                                Icon(Icons.Outlined.QueueMusic, null, tint = TextGrey, modifier = Modifier.size(24.dp))
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // ── Full Equalizer (expandable) ─────────
+                val equalizerBands by musicController.equalizerBands.collectAsStateWithLifecycle()
+                if (equalizerBands.isNotEmpty()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, BitVibeCyan.copy(alpha = 0.3f))
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Filled.GraphicEq, null, tint = BitVibeCyan, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("EQUALIZER", style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp), color = Color.White)
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(140.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.Bottom
+                            ) {
+                                equalizerBands.forEach { band ->
+                                    EqBandSlider(band = band) { level ->
+                                        musicController.setBandLevel(band.id, level)
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                EqPresetButton("Flat") { equalizerBands.forEach { musicController.setBandLevel(it.id, 0) } }
+                                EqPresetButton("Bass+") {
+                                    equalizerBands.forEachIndexed { i, b ->
+                                        musicController.setBandLevel(b.id, when (i) { 0 -> (b.maxLevel * 0.7).toInt(); 1 -> (b.maxLevel * 0.5).toInt(); else -> 0 })
+                                    }
+                                }
+                                EqPresetButton("Vocal") {
+                                    equalizerBands.forEachIndexed { i, b ->
+                                        val mid = equalizerBands.size / 2
+                                        musicController.setBandLevel(b.id, if (i in (mid - 1)..(mid + 1)) (b.maxLevel * 0.4).toInt() else (b.minLevel * 0.2).toInt())
+                                    }
+                                }
+                                EqPresetButton("Rock") {
+                                    equalizerBands.forEachIndexed { i, b ->
+                                        musicController.setBandLevel(b.id, when (i) { 0 -> (b.maxLevel * 0.5).toInt(); 1 -> (b.maxLevel * 0.3).toInt(); equalizerBands.size - 1 -> (b.maxLevel * 0.6).toInt(); equalizerBands.size - 2 -> (b.maxLevel * 0.4).toInt(); else -> 0 })
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
+// ── Cyan outlined pill button ───────────────────────────
 @Composable
-fun ProButton(text: String, active: Boolean, onClick: () -> Unit) {
+fun CyanPillButton(
+    text: String,
+    active: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
     Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.background)
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .border(
+                width = 1.dp,
+                color = BitVibeCyan,
+                shape = RoundedCornerShape(6.dp)
+            )
+            .background(if (active) BitVibeCyan.copy(alpha = 0.15f) else Color.Transparent)
             .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 12.dp),
+            .padding(horizontal = 8.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(text, color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text,
+            color = BitVibeCyan,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+            maxLines = 1
+        )
     }
 }
 
@@ -535,45 +591,86 @@ fun EqBandSlider(
     band: com.bitvibe.app.domain.player.EqBand,
     onValueChange: (Int) -> Unit
 ) {
+    val range = band.maxLevel - band.minLevel
+    val normalizedLevel = if (range > 0) (band.currentLevel - band.minLevel).toFloat() / range else 0.5f
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(48.dp)
     ) {
-        // Vertical Slider using rotation
+        // Custom vertical slider drawn with Canvas
         Box(
             modifier = Modifier
-                .height(100.dp)
-                .width(36.dp),
-            contentAlignment = Alignment.Center
+                .height(110.dp)
+                .width(40.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(BitVibeCyan.copy(alpha = 0.08f))
+                .clickable { /* handle via drag below */ },
+            contentAlignment = Alignment.BottomCenter
         ) {
+            // Track background
+            androidx.compose.foundation.Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+            ) {
+                val trackWidth = 3.dp.toPx()
+                val centerX = size.width / 2
+                // Inactive track
+                drawLine(
+                    color = BitVibeCyan.copy(alpha = 0.2f),
+                    start = androidx.compose.ui.geometry.Offset(centerX, 0f),
+                    end = androidx.compose.ui.geometry.Offset(centerX, size.height),
+                    strokeWidth = trackWidth,
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round
+                )
+                // Active track (from bottom)
+                val activeHeight = size.height * normalizedLevel
+                drawLine(
+                    color = BitVibeCyan,
+                    start = androidx.compose.ui.geometry.Offset(centerX, size.height),
+                    end = androidx.compose.ui.geometry.Offset(centerX, size.height - activeHeight),
+                    strokeWidth = trackWidth,
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round
+                )
+                // Thumb dot
+                val thumbY = size.height - activeHeight
+                drawCircle(
+                    color = BitVibeCyan,
+                    radius = 5.dp.toPx(),
+                    center = androidx.compose.ui.geometry.Offset(centerX, thumbY)
+                )
+            }
+
+            // Invisible slider for drag interaction
             Slider(
-                value = band.currentLevel.toFloat(),
-                onValueChange = { onValueChange(it.toInt()) },
-                valueRange = band.minLevel.toFloat()..band.maxLevel.toFloat(),
-                colors = SliderDefaults.colors(
-                    thumbColor = MaterialTheme.colorScheme.primary,
-                    activeTrackColor = MaterialTheme.colorScheme.primary,
-                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
+                value = normalizedLevel,
+                onValueChange = { fraction ->
+                    val level = (band.minLevel + (fraction * range)).toInt()
+                    onValueChange(level)
+                },
                 modifier = Modifier
                     .graphicsLayer {
                         rotationZ = 270f
                         transformOrigin = TransformOrigin(0.5f, 0.5f)
                     }
-                    .width(100.dp)
+                    .width(110.dp)
+                    .graphicsLayer { alpha = 0f },  // invisible, handles touch only
+                colors = SliderDefaults.colors(
+                    thumbColor = Color.Transparent,
+                    activeTrackColor = Color.Transparent,
+                    inactiveTrackColor = Color.Transparent
+                )
             )
         }
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // Frequency Label
+        Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = band.name.replace(" Hz", "").let { 
+            text = band.name.replace(" Hz", "").let {
                 val freq = it.toIntOrNull() ?: 0
-                if (freq >= 1000) "${freq/1000}k" else it
+                if (freq >= 1000) "${freq / 1000}k" else it
             },
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = TextGrey,
             maxLines = 1
         )
     }
@@ -583,17 +680,13 @@ fun EqBandSlider(
 fun EqPresetButton(text: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.background)
+            .clip(RoundedCornerShape(6.dp))
+            .border(1.dp, BitVibeCyan, RoundedCornerShape(6.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text, 
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Text(text, style = MaterialTheme.typography.labelSmall, color = BitVibeCyan)
     }
 }
 

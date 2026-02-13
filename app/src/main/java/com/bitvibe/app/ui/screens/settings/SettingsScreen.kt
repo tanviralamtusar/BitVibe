@@ -1,61 +1,27 @@
 package com.bitvibe.app.ui.screens.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.BasicAlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.bitvibe.app.BuildConfig
-import com.bitvibe.app.domain.player.EqBand
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.foundation.layout.width
+import com.bitvibe.app.data.repository.SettingsRepository
+import com.bitvibe.app.ui.theme.BitVibeCyan
+import com.bitvibe.app.ui.theme.TextGrey
+import com.bitvibe.app.ui.theme.DarkBg
 
 @Composable
 fun SettingsScreen(
@@ -66,99 +32,76 @@ fun SettingsScreen(
     var showThemeDialog by remember { mutableStateOf(false) }
     var showEqDialog by remember { mutableStateOf(false) }
 
-    Scaffold { innerPadding ->
-        Column(
+    val themeLabel = when (themeMode) {
+        SettingsRepository.THEME_SYSTEM -> "System"
+        SettingsRepository.THEME_LIGHT -> "Light"
+        SettingsRepository.THEME_DARK -> "Dark"
+        SettingsRepository.THEME_BLACK -> "Black"
+        else -> "System"
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DarkBg)
+            .verticalScroll(rememberScrollState())
+            .padding(top = 48.dp)
+    ) {
+        // Header
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Header
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(32.dp)
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = "Settings",
-                    style = MaterialTheme.typography.headlineLarge.copy(
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Library Section
-            SettingsSectionTitle("LIBRARY")
-            SettingsItem(
-                icon = Icons.Default.Folder,
-                title = "Music Folders",
-                subtitle = "Select folders to scan for music",
-                onClick = onMusicFoldersClick
+            Icon(
+                imageVector = Icons.Outlined.Settings,
+                contentDescription = null,
+                tint = BitVibeCyan,
+                modifier = Modifier.size(28.dp)
             )
-            
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "Settings",
+                style = MaterialTheme.typography.headlineLarge,
+                color = Color.White
+            )
+        }
 
-            // Appearance Section
-            SettingsSectionTitle("APPEARANCE")
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Settings Groups
+        SettingsGroup(title = "Playback") {
             SettingsItem(
-                icon = Icons.Default.DarkMode,
+                icon = Icons.Outlined.Palette,
                 title = "Theme",
-                subtitle = getThemeLabel(themeMode),
+                subtitle = themeLabel,
                 onClick = { showThemeDialog = true }
             )
-             SettingsItem(
-                icon = Icons.Default.GraphicEq, // Or GraphicEq if available in Default
+            SettingsItem(
+                icon = Icons.Outlined.Equalizer,
                 title = "Equalizer",
-                subtitle = "Adjust audio frequencies",
+                subtitle = "Adjust audio output",
                 onClick = { showEqDialog = true }
             )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // About Section
-            SettingsSectionTitle("ABOUT")
+        }
+
+        SettingsGroup(title = "About") {
             SettingsItem(
-                icon = Icons.Filled.Info,
-                title = "About BitVibe",
-                subtitle = "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                icon = Icons.Outlined.Info,
+                title = "Version",
+                subtitle = "1.0.0",
                 onClick = { }
             )
-            
-            Spacer(modifier = Modifier.weight(1f))
-            
-            // Footer
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "BitVibe v${BuildConfig.VERSION_NAME}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "Made with ❤️ for Musicians",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 
     if (showThemeDialog) {
         ThemeSelectionDialog(
-            currentMode = themeMode,
-            onModeSelected = { 
+            currentTheme = themeMode,
+            onThemeSelected = {
                 viewModel.setThemeMode(it)
-                showThemeDialog = false 
+                showThemeDialog = false
             },
             onDismiss = { showThemeDialog = false }
         )
@@ -166,27 +109,40 @@ fun SettingsScreen(
 
     if (showEqDialog) {
         EqualizerDialog(
-            viewModel = viewModel,
             onDismiss = { showEqDialog = false }
         )
     }
 }
 
 @Composable
-fun SettingsSectionTitle(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.labelMedium.copy(
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.5.sp
-        ),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(bottom = 8.dp)
-    )
+private fun SettingsGroup(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+        Text(
+            text = title.uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            color = BitVibeCyan,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(vertical = 4.dp),
+                content = content
+            )
+        }
+    }
 }
 
 @Composable
-fun SettingsItem(
+private fun SettingsItem(
     icon: ImageVector,
     title: String,
     subtitle: String,
@@ -196,160 +152,105 @@ fun SettingsItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary, // Or specific pink color
+            tint = TextGrey,
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.width(16.dp))
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White
             )
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.bodySmall,
+                color = TextGrey
             )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ThemeSelectionDialog(
-    currentMode: Int,
-    onModeSelected: (Int) -> Unit,
+private fun ThemeSelectionDialog(
+    currentTheme: Int,
+    onThemeSelected: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    BasicAlertDialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.large,
-            tonalElevation = 4.dp
-        ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Text("Select Theme", style = MaterialTheme.typography.headlineSmall)
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                val themes = listOf(
-                    "System Default" to com.bitvibe.app.data.repository.SettingsRepository.THEME_SYSTEM,
-                    "Light" to com.bitvibe.app.data.repository.SettingsRepository.THEME_LIGHT,
-                    "Dark" to com.bitvibe.app.data.repository.SettingsRepository.THEME_DARK,
-                    "AMOLED Black" to com.bitvibe.app.data.repository.SettingsRepository.THEME_BLACK
-                )
-                
-                themes.forEach { (label, mode) ->
+    val themes = listOf(
+        SettingsRepository.THEME_SYSTEM to "System",
+        SettingsRepository.THEME_LIGHT to "Light",
+        SettingsRepository.THEME_DARK to "Dark",
+        SettingsRepository.THEME_BLACK to "Black (AMOLED)"
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = {
+            Text("Select Theme", style = MaterialTheme.typography.headlineSmall, color = Color.White)
+        },
+        text = {
+            Column {
+                themes.forEach { (mode, label) ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onModeSelected(mode) }
-                            .padding(vertical = 8.dp),
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onThemeSelected(mode) }
+                            .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
-                            selected = (currentMode == mode),
-                            onClick = { onModeSelected(mode) }
+                            selected = currentTheme == mode,
+                            onClick = { onThemeSelected(mode) },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = BitVibeCyan,
+                                unselectedColor = TextGrey
+                            )
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(label)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.White
+                        )
                     }
                 }
             }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Done", color = BitVibeCyan)
+            }
         }
-    }
+    )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EqualizerDialog(
-    viewModel: SettingsViewModel,
-    onDismiss: () -> Unit
-) {
-    val bands by viewModel.musicController.equalizerBands.collectAsStateWithLifecycle()
-
-    BasicAlertDialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.large,
-            tonalElevation = 4.dp
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("Equalizer", style = MaterialTheme.typography.headlineSmall)
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                if (bands.isEmpty()) {
-                    Text(
-                        "Play a song to activate Equalizer",
-                         style = MaterialTheme.typography.bodyLarge,
-                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
-                } else {
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(250.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        items(bands) { band ->
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.padding(horizontal = 8.dp)
-                            ) {
-                                // Vertical Slider
-                                Slider(
-                                    value = band.currentLevel.toFloat(),
-                                    onValueChange = { 
-                                        viewModel.musicController.setBandLevel(band.id, it.toInt()) 
-                                    },
-                                    valueRange = band.minLevel.toFloat()..band.maxLevel.toFloat(),
-                                    modifier = Modifier
-                                        .graphicsLayer {
-                                            rotationZ = 270f
-                                            transformOrigin = TransformOrigin(0f, 0f)
-                                        }
-                                        .layout { measurable, constraints ->
-                                            val placeable = measurable.measure(
-                                                Constraints(
-                                                    minWidth = constraints.minHeight,
-                                                    maxWidth = constraints.maxHeight,
-                                                    minHeight = constraints.minWidth,
-                                                    maxHeight = constraints.maxWidth,
-                                                )
-                                            )
-                                            layout(placeable.height, placeable.width) {
-                                                placeable.place(-placeable.width, 0)
-                                            }
-                                        }
-                                        .width(180.dp)
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(band.name, style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(24.dp))
-                TextButton(onClick = onDismiss) {
-                    Text("Done")
-                }
+private fun EqualizerDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = {
+            Text("Equalizer", style = MaterialTheme.typography.headlineSmall, color = Color.White)
+        },
+        text = {
+            Text(
+                "Open the player and enable Pro Mode to access the equalizer.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextGrey
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("OK", color = BitVibeCyan)
             }
         }
-    }
-}
-
-fun getThemeLabel(mode: Int): String {
-    return when(mode) {
-        com.bitvibe.app.data.repository.SettingsRepository.THEME_LIGHT -> "Light"
-        com.bitvibe.app.data.repository.SettingsRepository.THEME_DARK -> "Dark"
-        com.bitvibe.app.data.repository.SettingsRepository.THEME_BLACK -> "AMOLED Black"
-        else -> "System Default"
-    }
+    )
 }
