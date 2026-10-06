@@ -18,8 +18,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.bitvibe.app.BuildConfig
 import com.bitvibe.app.data.repository.SettingsRepository
+import com.bitvibe.app.data.update.UpdateState
 import com.bitvibe.app.ui.theme.BitVibeCyan
 import com.bitvibe.app.ui.theme.TextGrey
 
@@ -28,6 +28,8 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val autoUpdate by viewModel.autoUpdate.collectAsStateWithLifecycle()
+    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
     var showThemeDialog by remember { mutableStateOf(false) }
     var showEqDialog by remember { mutableStateOf(false) }
 
@@ -80,13 +82,50 @@ fun SettingsScreen(
             )
         }
 
-        SettingsGroup(title = "About") {
+        SettingsGroup(title = "Updates") {
             SettingsItem(
                 icon = Icons.Outlined.Info,
                 title = "Version",
-                subtitle = BuildConfig.VERSION_NAME,
+                subtitle = viewModel.updateManager.currentVersionLabel,
                 onClick = { }
             )
+            if (viewModel.updateManager.canSelfUpdate) {
+                SettingsItem(
+                    icon = Icons.Outlined.SystemUpdate,
+                    title = "Check for updates",
+                    subtitle = when (val s = updateState) {
+                        UpdateState.Checking -> "Checking…"
+                        UpdateState.UpToDate -> "You're on the latest version"
+                        is UpdateState.Available -> "Build ${s.update.build} available"
+                        is UpdateState.Downloading -> "Downloading build ${s.update.build}… ${(s.progress * 100).toInt()}%"
+                        is UpdateState.Ready -> if (s.silent) "Build ${s.update.build} installs when you leave the app"
+                            else "Build ${s.update.build} ready to install"
+                        is UpdateState.Installing -> "Installing build ${s.update.build}…"
+                        else -> "From GitHub Releases"
+                    },
+                    onClick = {
+                        when (val s = updateState) {
+                            is UpdateState.Ready -> viewModel.updateManager.installReady()
+                            is UpdateState.Available -> viewModel.updateManager.downloadAndInstall(s.update)
+                            else -> viewModel.updateManager.checkNow()
+                        }
+                    }
+                )
+                SettingsSwitchItem(
+                    icon = Icons.Outlined.Autorenew,
+                    title = "Auto-update",
+                    subtitle = "Download new versions automatically and install them when you leave the app",
+                    checked = autoUpdate,
+                    onCheckedChange = { viewModel.setAutoUpdate(it) }
+                )
+            } else {
+                SettingsItem(
+                    icon = Icons.Outlined.SystemUpdate,
+                    title = "Updates",
+                    subtitle = "Disabled in debug builds",
+                    onClick = { }
+                )
+            }
         }
     }
 
@@ -168,6 +207,52 @@ private fun SettingsItem(
                 color = TextGrey
             )
         }
+    }
+}
+
+@Composable
+private fun SettingsSwitchItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = TextGrey,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = TextGrey
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.Black,
+                checkedTrackColor = BitVibeCyan
+            )
+        )
     }
 }
 

@@ -3,6 +3,7 @@ package com.bitvibe.app.ui.screens.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bitvibe.app.data.repository.SettingsRepository
+import com.bitvibe.app.data.update.UpdateManager
 import com.bitvibe.app.domain.player.MusicController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -13,7 +14,8 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     val musicController: MusicController,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    val updateManager: UpdateManager
 ) : ViewModel() {
     
     val themeMode = settingsRepository.themeMode
@@ -22,6 +24,17 @@ class SettingsViewModel @Inject constructor(
     fun setThemeMode(mode: Int) {
         viewModelScope.launch {
             settingsRepository.setThemeMode(mode)
+        }
+    }
+
+    val autoUpdate = settingsRepository.autoUpdate
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val updateState = updateManager.state
+
+    fun setAutoUpdate(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setAutoUpdate(enabled)
         }
     }
 }

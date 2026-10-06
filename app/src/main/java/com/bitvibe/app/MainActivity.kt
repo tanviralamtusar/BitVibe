@@ -21,6 +21,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.bitvibe.app.data.repository.SettingsRepository
+import com.bitvibe.app.data.update.UpdateManager
 import com.bitvibe.app.ui.navigation.Screen
 import com.bitvibe.app.ui.theme.BitVibeTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -35,6 +36,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var settingsRepository: SettingsRepository
 
+    @Inject
+    lateinit var updateManager: UpdateManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -45,8 +49,21 @@ class MainActivity : ComponentActivity() {
                 com.bitvibe.app.ui.common.PermissionWrapper {
                     MainApp(musicController)
                 }
+                com.bitvibe.app.ui.common.UpdatePrompt(updateManager)
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Checks GitHub for a newer release (at most every 30 minutes).
+        updateManager.onAppForeground()
+    }
+
+    override fun onStop() {
+        // A downloaded update that can install silently is applied while the app is in the background.
+        updateManager.onAppBackground()
+        super.onStop()
     }
 }
 

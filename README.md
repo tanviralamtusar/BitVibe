@@ -9,6 +9,28 @@ Open the [Releases page](https://github.com/tanviralamtusar/BitVibe/releases), t
 `bitvibe-<version>-<build>.apk`, and open it on the phone. Allow "install unknown apps" for your
 browser when Android asks.
 
+## App updates
+
+Release builds update themselves from this repo's GitHub Releases (`data/update/UpdateManager.kt`):
+
+1. When the app opens (at most every 30 minutes) it reads the latest release from the GitHub API.
+   If the tag's build number is higher than the installed `versionCode`, it downloads the APK in the
+   background (retrying up to 3 times).
+2. **Android 12 and newer, after the first update:** the update installs silently, with no prompt,
+   when you leave the app and nothing is playing. You come back to the new version.
+3. **The first update, and Android 11 and older:** Android requires one confirmation tap, so the app
+   shows **Update ready → Install**. The very first time it also asks you to allow "Install unknown
+   apps" for BitVibe.
+
+Silent installs work once BitVibe is its own "installer of record". An APK installed from a browser
+or file manager is owned by that app, so the first update needs the tap and later ones don't.
+
+**Settings → Updates** shows the version, has **Check for updates**, and an **Auto-update** switch.
+With auto-update off, new versions are offered with **Update now / Later**. Debug builds never
+self-update (different signing key). The check is unauthenticated, so **the repo must stay public**,
+and the updater parses the release tag, so keep the `android-v<version>-b<build>` format. Every
+release must be signed with the same keystore, otherwise Android refuses the update.
+
 ## Build & release
 
 ### GitHub Actions (default)
