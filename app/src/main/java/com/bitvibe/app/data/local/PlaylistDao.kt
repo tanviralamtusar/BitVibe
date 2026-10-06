@@ -15,6 +15,9 @@ interface PlaylistDao {
     @Query("SELECT * FROM playlists ORDER BY createdAt DESC")
     fun getAllPlaylists(): Flow<List<Playlist>>
 
+    @Query("SELECT * FROM playlists WHERE id = :playlistId")
+    fun getPlaylistById(playlistId: Long): Flow<Playlist?>
+
     @Query("SELECT * FROM playlist_songs WHERE playlistId = :playlistId ORDER BY orderIndex ASC")
     fun getSongsForPlaylist(playlistId: Long): Flow<List<PlaylistSong>>
 
@@ -33,6 +36,12 @@ interface PlaylistDao {
     @Query("SELECT COUNT(*) FROM playlist_songs WHERE playlistId = :playlistId")
     suspend fun getSongCount(playlistId: Long): Int
     
+    @Query("SELECT COUNT(*) FROM playlist_songs WHERE playlistId = :playlistId AND audioId = :audioId")
+    suspend fun countSong(playlistId: Long, audioId: Long): Int
+
+    @Query("SELECT MAX(orderIndex) FROM playlist_songs WHERE playlistId = :playlistId")
+    suspend fun getMaxOrderIndex(playlistId: Long): Int?
+
     @Query("UPDATE playlists SET songCount = :count WHERE id = :playlistId")
     suspend fun updateSongCount(playlistId: Long, count: Int)
 }

@@ -3,6 +3,7 @@ package com.bitvibe.app.data.repository
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -29,6 +30,25 @@ class SettingsRepository @Inject constructor(
         context.dataStore.edit { settings ->
             settings[THEME_MODE_KEY] = mode
         }
+    }
+
+    private val AUTO_UPDATE_KEY = booleanPreferencesKey("auto_update")
+    private val SKIPPED_UPDATE_BUILD_KEY = intPreferencesKey("skipped_update_build")
+
+    /** Download and install new releases automatically (on by default). */
+    val autoUpdate: Flow<Boolean> = context.dataStore.data
+        .map { preferences -> preferences[AUTO_UPDATE_KEY] ?: true }
+
+    suspend fun setAutoUpdate(enabled: Boolean) {
+        context.dataStore.edit { settings -> settings[AUTO_UPDATE_KEY] = enabled }
+    }
+
+    /** A build the user chose "Later" for; it isn't offered again automatically. */
+    val skippedUpdateBuild: Flow<Int> = context.dataStore.data
+        .map { preferences -> preferences[SKIPPED_UPDATE_BUILD_KEY] ?: 0 }
+
+    suspend fun setSkippedUpdateBuild(build: Int) {
+        context.dataStore.edit { settings -> settings[SKIPPED_UPDATE_BUILD_KEY] = build }
     }
     
     companion object {

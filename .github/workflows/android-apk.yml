@@ -1,0 +1,131 @@
+# Builds the BitVibe Android app into an installable APK on GitHub's runners and,
+# for builds of `main`, publishes it as the latest GitHub Release tagged
+# `android-v<versionName>-b<build>`. <build> is the Android versionCode (the
+# workflow run number), so every release installs over the previous one.
+#
+# Repository settings → Secrets and variables → Actions → Secrets (optional,
+# your own signing key, see README.md → Build & release):
+#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+# Without them the APK is signed with a throwaway key made for that run: fine for
+# a one-off install, but Android won't install the next build over it.
+
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'gradle/**'
+      - '*.gradle.kts'
+      - 'gradle.properties'
+      - 'gradlew'
+      - '.github/workflows/android-apk.yml'
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write # to create the release + tag
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history + tags, for release notes since the last release
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17' # Android Gradle Plugin 8.x needs JDK 17+
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests and release build
+        # Compiling the release variant is the type check; there is no separate lint gate.
+        run: |
+          chmod +x gradlew
+          ./gradlew testReleaseUnitTest assembleRelease -PversionCode="$GITHUB_RUN_NUMBER" --no-daemon
+
+      - name: Sign APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          version=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          out="$RUNNER_TEMP/bitvibe-${version}-${GITHUB_RUN_NUMBER}.apk"
+          built=app/build/outputs/apk/release/app-release-unsigned.apk
+          tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          aligned="$RUNNER_TEMP/aligned.apk"
+          "$tools/zipalign" -f -p 4 "$built" "$aligned"
+
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            "$tools/apksigner" sign \
+              --ks "$RUNNER_TEMP/release.jks" \
+              --ks-pass env:KEYSTORE_PASSWORD \
+              --ks-key-alias "$KEY_ALIAS" \
+              --key-pass env:KEY_PASSWORD \
+              --out "$out" "$aligned"
+            rm -f "$RUNNER_TEMP/release.jks"
+            echo "Signed with the release keystore."
+          else
+            keytool -genkeypair -keystore "$RUNNER_TEMP/temp.jks" -storepass android -keypass android \
+              -alias temp -keyalg RSA -keysize 2048 -validity 365 -dname "CN=BitVibe CI" -noprompt
+            "$tools/apksigner" sign --ks "$RUNNER_TEMP/temp.jks" --ks-pass pass:android \
+              --ks-key-alias temp --key-pass pass:android --out "$out" "$aligned"
+            rm -f "$RUNNER_TEMP/temp.jks"
+            echo "::warning::No ANDROID_KEYSTORE_BASE64 secret — APK is signed with a throwaway key. Phones must uninstall before installing the next build. Add a release keystore (README.md → Build & release)."
+          fi
+
+          "$tools/apksigner" verify --print-certs "$out" | head -5
+          echo "APK_PATH=$out" >> "$GITHUB_ENV"
+          echo "APK_NAME=$(basename "$out")" >> "$GITHUB_ENV"
+          echo "APP_VERSION=$version" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK_NAME }}
+          path: ${{ env.APK_PATH }}
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Write release notes
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          tag="android-v${APP_VERSION}-b${GITHUB_RUN_NUMBER}"
+          prev=$(git describe --tags --match 'android-v*' --abbrev=0 2>/dev/null || true)
+          {
+            echo "BitVibe for Android ${APP_VERSION} (build ${GITHUB_RUN_NUMBER})"
+            echo
+            if [ -n "$prev" ]; then
+              echo "Changes since ${prev}:"
+              git log --no-merges --pretty='- %s' "${prev}..HEAD" | head -40
+            else
+              echo "Recent changes:"
+              git log --no-merges --pretty='- %s' -15
+            fi
+          } > "$RUNNER_TEMP/notes.md"
+          echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
+          cat "$RUNNER_TEMP/notes.md"
+
+      - name: Publish release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ github.sha }}
+          name: BitVibe Android ${{ env.APP_VERSION }} (build ${{ github.run_number }})
+          body_path: ${{ runner.temp }}/notes.md
+          files: ${{ env.APK_PATH }}
+          make_latest: 'true'

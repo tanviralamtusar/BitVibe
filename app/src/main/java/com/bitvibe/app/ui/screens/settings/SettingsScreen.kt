@@ -19,33 +19,29 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bitvibe.app.data.repository.SettingsRepository
+import com.bitvibe.app.data.update.UpdateState
 import com.bitvibe.app.ui.theme.BitVibeCyan
 import com.bitvibe.app.ui.theme.TextGrey
-import com.bitvibe.app.ui.theme.DarkBg
 
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel = hiltViewModel(),
-    onMusicFoldersClick: () -> Unit
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val autoUpdate by viewModel.autoUpdate.collectAsStateWithLifecycle()
+    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
     var showThemeDialog by remember { mutableStateOf(false) }
     var showEqDialog by remember { mutableStateOf(false) }
 
-    val themeLabel = when (themeMode) {
-        SettingsRepository.THEME_SYSTEM -> "System"
-        SettingsRepository.THEME_LIGHT -> "Light"
-        SettingsRepository.THEME_DARK -> "Dark"
-        SettingsRepository.THEME_BLACK -> "Black"
-        else -> "System"
-    }
+    // BitVibe is a dark-only design; older "System"/"Light" values fall back to Dark.
+    val themeLabel = if (themeMode == SettingsRepository.THEME_BLACK) "Black (AMOLED)" else "Dark"
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBg)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
-            .padding(top = 48.dp)
+            .padding(top = 8.dp)
     ) {
         // Header
         Row(
@@ -71,7 +67,7 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Settings Groups
-        SettingsGroup(title = "Playback") {
+        SettingsGroup(title = "Appearance & Audio") {
             SettingsItem(
                 icon = Icons.Outlined.Palette,
                 title = "Theme",
@@ -86,13 +82,50 @@ fun SettingsScreen(
             )
         }
 
-        SettingsGroup(title = "About") {
+        SettingsGroup(title = "Updates") {
             SettingsItem(
                 icon = Icons.Outlined.Info,
                 title = "Version",
-                subtitle = "1.0.0",
+                subtitle = viewModel.updateManager.currentVersionLabel,
                 onClick = { }
             )
+            if (viewModel.updateManager.canSelfUpdate) {
+                SettingsItem(
+                    icon = Icons.Outlined.SystemUpdate,
+                    title = "Check for updates",
+                    subtitle = when (val s = updateState) {
+                        UpdateState.Checking -> "Checking…"
+                        UpdateState.UpToDate -> "You're on the latest version"
+                        is UpdateState.Available -> "Build ${s.update.build} available"
+                        is UpdateState.Downloading -> "Downloading build ${s.update.build}… ${(s.progress * 100).toInt()}%"
+                        is UpdateState.Ready -> if (s.silent) "Build ${s.update.build} installs when you leave the app"
+                            else "Build ${s.update.build} ready to install"
+                        is UpdateState.Installing -> "Installing build ${s.update.build}…"
+                        else -> "From GitHub Releases"
+                    },
+                    onClick = {
+                        when (val s = updateState) {
+                            is UpdateState.Ready -> viewModel.updateManager.installReady()
+                            is UpdateState.Available -> viewModel.updateManager.downloadAndInstall(s.update)
+                            else -> viewModel.updateManager.checkNow()
+                        }
+                    }
+                )
+                SettingsSwitchItem(
+                    icon = Icons.Outlined.Autorenew,
+                    title = "Auto-update",
+                    subtitle = "Download new versions automatically and install them when you leave the app",
+                    checked = autoUpdate,
+                    onCheckedChange = { viewModel.setAutoUpdate(it) }
+                )
+            } else {
+                SettingsItem(
+                    icon = Icons.Outlined.SystemUpdate,
+                    title = "Updates",
+                    subtitle = "Disabled in debug builds",
+                    onClick = { }
+                )
+            }
         }
     }
 
@@ -178,17 +211,62 @@ private fun SettingsItem(
 }
 
 @Composable
+private fun SettingsSwitchItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = TextGrey,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = TextGrey
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.Black,
+                checkedTrackColor = BitVibeCyan
+            )
+        )
+    }
+}
+
+@Composable
 private fun ThemeSelectionDialog(
     currentTheme: Int,
     onThemeSelected: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
     val themes = listOf(
-        SettingsRepository.THEME_SYSTEM to "System",
-        SettingsRepository.THEME_LIGHT to "Light",
         SettingsRepository.THEME_DARK to "Dark",
         SettingsRepository.THEME_BLACK to "Black (AMOLED)"
     )
+    val selectedTheme = if (currentTheme == SettingsRepository.THEME_BLACK) currentTheme else SettingsRepository.THEME_DARK
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -207,7 +285,7 @@ private fun ThemeSelectionDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
-                            selected = currentTheme == mode,
+                            selected = selectedTheme == mode,
                             onClick = { onThemeSelected(mode) },
                             colors = RadioButtonDefaults.colors(
                                 selectedColor = BitVibeCyan,

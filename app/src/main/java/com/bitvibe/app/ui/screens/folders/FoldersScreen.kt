@@ -12,7 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.bitvibe.app.ui.theme.BitVibeCyan
-import com.bitvibe.app.ui.theme.DarkBg
 import com.bitvibe.app.ui.theme.TextGrey
 
 @Composable
@@ -20,7 +19,7 @@ fun FoldersScreen(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBg),
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

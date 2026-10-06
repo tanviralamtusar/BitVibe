@@ -9,8 +9,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Equalizer
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Settings
@@ -34,8 +32,6 @@ import com.bitvibe.app.data.model.AudioFile
 import com.bitvibe.app.ui.screens.library.LibraryViewModel
 import com.bitvibe.app.ui.theme.BitVibeCyan
 import com.bitvibe.app.ui.theme.BitVibeCyanDark
-import com.bitvibe.app.ui.theme.DarkBg
-import com.bitvibe.app.ui.theme.DarkSurface
 import com.bitvibe.app.ui.theme.DarkSurfaceVariant
 import com.bitvibe.app.ui.theme.TextGrey
 import com.bitvibe.app.ui.theme.TextMuted
@@ -64,14 +60,14 @@ fun HomeScreen(
     // Create "Top Mixes" by grouping by artist
     val topMixes = remember(audioFiles) {
         audioFiles
-            .groupBy { it.artist.ifBlank { "Unknown" } }
+            .groupBy { it.artist }
             .entries
-            .filter { it.value.size >= 1 }
+            // Artists with the most songs make the most interesting mixes.
+            .sortedByDescending { it.value.size }
             .take(6)
             .mapIndexed { index, entry ->
                 MixData(
-                    title = if (entry.key == "<unknown>" || entry.key.isBlank())
-                        "Mix ${index + 1}" else "${entry.key} Mix",
+                    title = if (entry.key == "Unknown artist") "Mix ${index + 1}" else "${entry.key} Mix",
                     songs = entry.value,
                     color = MixColors[index % MixColors.size]
                 )
@@ -86,15 +82,15 @@ fun HomeScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBg),
-        contentPadding = PaddingValues(bottom = 120.dp)
+            .background(MaterialTheme.colorScheme.background),
+        contentPadding = PaddingValues(bottom = 24.dp)
     ) {
         // ── Welcome Header ──────────────────────────────
         item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 12.dp, top = 44.dp, bottom = 20.dp),
+                    .padding(start = 16.dp, end = 12.dp, top = 16.dp, bottom = 20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Avatar
@@ -117,35 +113,18 @@ fun HomeScreen(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Welcome back !",
+                        text = "Welcome back!",
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "BitVibe Player",
+                        text = if (audioFiles.isEmpty()) "BitVibe Player" else "${audioFiles.size} songs on this device",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextGrey
                     )
                 }
 
-                // Action icons
-                IconButton(onClick = { /* TODO: visualizer */ }) {
-                    Icon(
-                        Icons.Filled.Equalizer,
-                        contentDescription = "Equalizer",
-                        tint = TextGrey,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-                IconButton(onClick = { /* TODO: notifications */ }) {
-                    Icon(
-                        Icons.Filled.Notifications,
-                        contentDescription = "Notifications",
-                        tint = TextGrey,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
                 IconButton(onClick = onSettingsClick) {
                     Icon(
                         Icons.Outlined.Settings,
@@ -181,7 +160,7 @@ fun HomeScreen(
                     pair.forEach { audio ->
                         ContinueListeningCard(
                             audio = audio,
-                            onClick = { viewModel.playSong(audio) },
+                            onClick = { viewModel.playSong(audio, continueListening) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -215,7 +194,7 @@ fun HomeScreen(
                         TopMixCard(
                             mix = mix,
                             onClick = {
-                                mix.songs.firstOrNull()?.let { viewModel.playSong(it) }
+                                mix.songs.firstOrNull()?.let { viewModel.playSong(it, mix.songs) }
                             }
                         )
                     }
@@ -244,7 +223,7 @@ fun HomeScreen(
                     items(recentListening) { audio ->
                         RecentListeningCard(
                             audio = audio,
-                            onClick = { viewModel.playSong(audio) }
+                            onClick = { viewModel.playSong(audio, recentListening) }
                         )
                     }
                 }
@@ -304,9 +283,17 @@ private fun ContinueListeningCard(
             Box(
                 modifier = Modifier
                     .size(56.dp)
-                    .background(DarkSurface),
+                    .background(MaterialTheme.colorScheme.surface),
                 contentAlignment = Alignment.Center
             ) {
+                // Placeholder first; album art (when the file has any) draws over it.
+                Icon(
+                    Icons.Outlined.MusicNote,
+                    contentDescription = null,
+                    tint = TextMuted,
+                    modifier = Modifier.size(20.dp)
+                )
+
                 if (audio.albumArtUri != null) {
                     AsyncImage(
                         model = audio.albumArtUri,
@@ -314,18 +301,11 @@ private fun ContinueListeningCard(
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
-                } else {
-                    Icon(
-                        Icons.Outlined.MusicNote,
-                        contentDescription = null,
-                        tint = TextMuted,
-                        modifier = Modifier.size(20.dp)
-                    )
                 }
             }
 
             Text(
-                text = audio.title.replace("_", " ").substringBeforeLast("."),
+                text = audio.title.replace("_", " "),
                 style = MaterialTheme.typography.labelMedium,
                 color = Color.White,
                 maxLines = 2,
@@ -353,36 +333,35 @@ private fun TopMixCard(
         colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Album art or gradient background
             val firstSong = mix.songs.firstOrNull()
+            // Placeholder first; album art (when the file has any) draws over it.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                mix.color.copy(alpha = 0.7f),
+                                MaterialTheme.colorScheme.surface
+                            )
+                        )
+                    )
+            )
+            Icon(
+                Icons.Outlined.MusicNote,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.3f),
+                modifier = Modifier
+                    .size(48.dp)
+                    .align(Alignment.Center)
+            )
+
             if (firstSong?.albumArtUri != null) {
                 AsyncImage(
                     model = firstSong.albumArtUri,
                     contentDescription = mix.title,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
-                )
-            } else {
-                // Gradient placeholder
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    mix.color.copy(alpha = 0.7f),
-                                    DarkSurface
-                                )
-                            )
-                        )
-                )
-                Icon(
-                    Icons.Outlined.MusicNote,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.3f),
-                    modifier = Modifier
-                        .size(48.dp)
-                        .align(Alignment.Center)
                 )
             }
 
@@ -444,9 +423,29 @@ private fun RecentListeningCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(140.dp)
-                    .background(DarkSurface),
+                    .background(MaterialTheme.colorScheme.surface),
                 contentAlignment = Alignment.Center
             ) {
+                // Placeholder first; album art (when the file has any) draws over it.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    BitVibeCyanDark.copy(alpha = 0.3f),
+                                    MaterialTheme.colorScheme.surface
+                                )
+                            )
+                        )
+                )
+                Icon(
+                    Icons.Outlined.MusicNote,
+                    contentDescription = null,
+                    tint = TextMuted,
+                    modifier = Modifier.size(36.dp)
+                )
+
                 if (audio.albumArtUri != null) {
                     AsyncImage(
                         model = audio.albumArtUri,
@@ -454,32 +453,12 @@ private fun RecentListeningCard(
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
-                } else {
-                    // Gradient placeholder
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        BitVibeCyanDark.copy(alpha = 0.3f),
-                                        DarkSurface
-                                    )
-                                )
-                            )
-                    )
-                    Icon(
-                        Icons.Outlined.MusicNote,
-                        contentDescription = null,
-                        tint = TextMuted,
-                        modifier = Modifier.size(36.dp)
-                    )
                 }
             }
 
             // Title
             Text(
-                text = audio.title.replace("_", " ").substringBeforeLast("."),
+                text = audio.title.replace("_", " "),
                 style = MaterialTheme.typography.labelMedium,
                 color = Color.White,
                 maxLines = 1,
