@@ -33,6 +33,14 @@ class MusicService : MediaSessionService() {
         return mediaSession
     }
 
+    override fun onTaskRemoved(rootIntent: android.content.Intent?) {
+        // Keep playing in the background if music is on; otherwise don't linger after swipe-away.
+        val player = mediaSession?.player
+        if (player == null || !player.playWhenReady || player.mediaItemCount == 0) {
+            stopSelf()
+        }
+    }
+
     override fun onDestroy() {
         mediaSession?.run {
             player.release()

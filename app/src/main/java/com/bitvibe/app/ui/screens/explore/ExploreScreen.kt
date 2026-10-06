@@ -55,7 +55,7 @@ fun ExploreScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 16.dp),
+                .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -112,7 +112,7 @@ fun ExploreScreen(
 
         // ── Results ─────────────────────────────────────
         LazyColumn(
-            contentPadding = PaddingValues(bottom = 120.dp)
+            contentPadding = PaddingValues(bottom = 24.dp)
         ) {
             item {
                 Row(
@@ -138,7 +138,7 @@ fun ExploreScreen(
             items(filteredFiles) { audio ->
                 SearchResultItem(
                     audio = audio,
-                    onClick = { viewModel.playSong(audio) }
+                    onClick = { viewModel.playSong(audio, filteredFiles) }
                 )
             }
 
@@ -182,19 +182,20 @@ private fun SearchResultItem(
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
+            // Placeholder first; album art (when the file has any) draws over it.
+            Icon(
+                imageVector = Icons.Outlined.MusicNote,
+                contentDescription = null,
+                tint = TextGrey,
+                modifier = Modifier.size(28.dp)
+            )
+
             if (audio.albumArtUri != null) {
                 AsyncImage(
                     model = audio.albumArtUri,
                     contentDescription = audio.title,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Outlined.MusicNote,
-                    contentDescription = null,
-                    tint = TextGrey,
-                    modifier = Modifier.size(28.dp)
                 )
             }
         }

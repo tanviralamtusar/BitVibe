@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -26,9 +28,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -41,10 +42,8 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Loop
-import androidx.compose.material.icons.outlined.Bedtime
-import androidx.compose.material.icons.outlined.Label
+import androidx.compose.material.icons.outlined.CloseFullscreen
 import androidx.compose.material.icons.outlined.OpenInFull
-import androidx.compose.material.icons.outlined.QueueMusic
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -57,11 +56,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.TransformOrigin
@@ -78,25 +79,27 @@ import com.bitvibe.app.domain.player.MusicController
 import com.bitvibe.app.ui.theme.BitVibeCyan
 import com.bitvibe.app.ui.theme.TextGrey
 import com.bitvibe.app.ui.theme.TextMuted
-import com.bitvibe.app.ui.theme.DarkBg
-import com.bitvibe.app.ui.theme.DarkSurface
 
 @Composable
 fun PlayerScreen(
     musicController: MusicController,
-    onCollapse: () -> Unit,
-    onSettingsClick: () -> Unit
+    onCollapse: () -> Unit
 ) {
     val currentSong by musicController.currentSong.collectAsStateWithLifecycle()
     val isPlaying by musicController.isPlaying.collectAsStateWithLifecycle()
     val waveform by musicController.waveform.collectAsStateWithLifecycle()
 
     var isProMode by remember { mutableStateOf(false) }
+    var showAddToPlaylist by remember { mutableStateOf(false) }
+    var showEqualizer by remember { mutableStateOf(true) }
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBg)
+            .background(MaterialTheme.colorScheme.background)
+            .statusBarsPadding()
+            .navigationBarsPadding()
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -104,32 +107,32 @@ fun PlayerScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 8.dp, top = 48.dp, bottom = 8.dp),
+                .padding(start = 4.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            IconButton(onClick = onCollapse) {
+                Icon(
+                    Icons.Filled.KeyboardArrowDown,
+                    contentDescription = "Collapse player",
+                    tint = Color.White,
+                    modifier = Modifier.size(30.dp)
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "PLAYING FROM PLAYLIST:",
+                    text = "NOW PLAYING",
                     style = MaterialTheme.typography.labelSmall,
                     color = TextGrey,
                     letterSpacing = 1.sp
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = currentSong?.album?.takeIf { it.isNotBlank() } ?: "BitVibe",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = BitVibeCyan,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = " ▾",
-                        color = BitVibeCyan,
-                        fontSize = 12.sp
-                    )
-                }
-            }
-            IconButton(onClick = { /* TODO: more options */ }) {
-                Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = TextGrey)
+                Text(
+                    text = currentSong?.album?.takeIf { it.isNotBlank() } ?: "BitVibe",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = BitVibeCyan,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
 
@@ -145,22 +148,22 @@ fun PlayerScreen(
                     .fillMaxWidth()
                     .aspectRatio(1f)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(DarkSurface),
+                    .background(MaterialTheme.colorScheme.surface),
                 contentAlignment = Alignment.Center
             ) {
+                // Placeholder sits underneath, so songs without embedded art still show something.
+                Icon(
+                    Icons.Filled.MusicNote,
+                    contentDescription = null,
+                    tint = TextMuted,
+                    modifier = Modifier.size(80.dp)
+                )
                 if (currentSong?.albumArtUri != null) {
                     AsyncImage(
                         model = currentSong?.albumArtUri,
                         contentDescription = currentSong?.title,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Icon(
-                        Icons.Filled.MusicNote,
-                        contentDescription = null,
-                        tint = TextMuted,
-                        modifier = Modifier.size(80.dp)
                     )
                 }
             }
@@ -196,11 +199,11 @@ fun PlayerScreen(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                IconButton(onClick = { /* TODO: share */ }) {
+                IconButton(
+                    onClick = { currentSong?.let { shareSong(context, it) } },
+                    enabled = currentSong != null
+                ) {
                     Icon(Icons.Filled.Share, contentDescription = "Share", tint = TextGrey, modifier = Modifier.size(20.dp))
-                }
-                IconButton(onClick = { /* TODO: favorite */ }) {
-                    Icon(Icons.Filled.FavoriteBorder, contentDescription = "Like", tint = TextGrey, modifier = Modifier.size(20.dp))
                 }
             }
         }
@@ -246,10 +249,19 @@ fun PlayerScreen(
                 }
             }
 
-            // Seekbar
+            // Seekbar: track the finger locally and seek once on release, so dragging
+            // doesn't fire dozens of seeks (audible stutter) or jump back while held.
+            var dragFraction by remember { mutableFloatStateOf(-1f) }
+            val isDragging = dragFraction >= 0f
+            val shownPosition = if (isDragging) (dragFraction * duration).toLong() else position
             Slider(
-                value = (position.toFloat() / duration).coerceIn(0f, 1f),
-                onValueChange = { musicController.seekTo((it * duration).toLong()) },
+                value = if (isDragging) dragFraction else (position.toFloat() / duration).coerceIn(0f, 1f),
+                onValueChange = { dragFraction = it },
+                onValueChangeFinished = {
+                    if (dragFraction >= 0f) musicController.seekTo((dragFraction * duration).toLong())
+                    dragFraction = -1f
+                },
+                enabled = currentSong != null,
                 colors = SliderDefaults.colors(
                     thumbColor = Color.White,
                     activeTrackColor = BitVibeCyan,
@@ -262,7 +274,7 @@ fun PlayerScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(formatTime(position), style = MaterialTheme.typography.bodySmall, color = TextGrey)
+                Text(formatTime(shownPosition), style = MaterialTheme.typography.bodySmall, color = TextGrey)
                 Text(formatTime(duration), style = MaterialTheme.typography.bodySmall, color = TextGrey)
             }
         }
@@ -283,16 +295,20 @@ fun PlayerScreen(
             IconButton(onClick = { musicController.toggleRepeatMode() }) {
                 Icon(
                     if (repeatMode == Player.REPEAT_MODE_ONE) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
-                    null,
+                    contentDescription = when (repeatMode) {
+                        Player.REPEAT_MODE_ONE -> "Repeat one"
+                        Player.REPEAT_MODE_ALL -> "Repeat all"
+                        else -> "Repeat off"
+                    },
                     tint = if (repeatMode != Player.REPEAT_MODE_OFF) BitVibeCyan else TextGrey,
                     modifier = Modifier.size(24.dp)
                 )
             }
             IconButton(onClick = { musicController.toggleShuffleMode() }) {
-                Icon(Icons.Filled.Shuffle, null, tint = if (shuffleEnabled) BitVibeCyan else TextGrey, modifier = Modifier.size(24.dp))
+                Icon(Icons.Filled.Shuffle, contentDescription = "Shuffle", tint = if (shuffleEnabled) BitVibeCyan else TextGrey, modifier = Modifier.size(24.dp))
             }
             IconButton(onClick = { musicController.skipToPrevious() }, modifier = Modifier.size(48.dp)) {
-                Icon(Icons.Filled.SkipPrevious, null, modifier = Modifier.size(36.dp), tint = Color.White)
+                Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous", modifier = Modifier.size(36.dp), tint = Color.White)
             }
 
             // Big cyan play button
@@ -306,20 +322,25 @@ fun PlayerScreen(
             ) {
                 Icon(
                     if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    null,
+                    contentDescription = if (isPlaying) "Pause" else "Play",
                     modifier = Modifier.size(32.dp),
                     tint = Color.Black
                 )
             }
 
             IconButton(onClick = { musicController.skipToNext() }, modifier = Modifier.size(48.dp)) {
-                Icon(Icons.Filled.SkipNext, null, modifier = Modifier.size(36.dp), tint = Color.White)
+                Icon(Icons.Filled.SkipNext, contentDescription = "Next", modifier = Modifier.size(36.dp), tint = Color.White)
             }
-            IconButton(onClick = { /* TODO: EQ */ }) {
-                Icon(Icons.Filled.GraphicEq, null, tint = TextGrey, modifier = Modifier.size(24.dp))
+            IconButton(onClick = { isProMode = !isProMode }) {
+                Icon(
+                    Icons.Filled.GraphicEq,
+                    contentDescription = "Pro tools",
+                    tint = if (isProMode) BitVibeCyan else TextGrey,
+                    modifier = Modifier.size(24.dp)
+                )
             }
-            IconButton(onClick = { /* TODO: add */ }) {
-                Icon(Icons.Filled.Add, null, tint = TextGrey, modifier = Modifier.size(24.dp))
+            IconButton(onClick = { showAddToPlaylist = true }, enabled = currentSong != null) {
+                Icon(Icons.Filled.Add, contentDescription = "Add to playlist", tint = TextGrey, modifier = Modifier.size(24.dp))
             }
         }
 
@@ -392,6 +413,7 @@ fun PlayerScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // ── Speed + Equalizer (side by side) ────
+                val equalizerBands by musicController.equalizerBands.collectAsStateWithLifecycle()
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -401,7 +423,7 @@ fun PlayerScreen(
                     Card(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         border = androidx.compose.foundation.BorderStroke(1.dp, BitVibeCyan.copy(alpha = 0.3f))
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
@@ -421,22 +443,24 @@ fun PlayerScreen(
                                         .size(30.dp)
                                         .clip(CircleShape)
                                         .border(1.dp, BitVibeCyan.copy(alpha = 0.5f), CircleShape)
-                                        .clickable { musicController.setPlaybackSpeed((speed - 0.1f).coerceAtLeast(0.25f)) },
+                                        .clickable { musicController.setPlaybackSpeed(speed - 0.1f) },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(Icons.Filled.Remove, null, tint = Color.White, modifier = Modifier.size(16.dp))
                                 }
+                                // Tap the value to snap back to normal speed.
                                 Text(
                                     "%.2fx".format(speed),
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = Color.White
+                                    color = if (speed == 1f) Color.White else BitVibeCyan,
+                                    modifier = Modifier.clickable { musicController.setPlaybackSpeed(1f) }
                                 )
                                 Box(
                                     modifier = Modifier
                                         .size(30.dp)
                                         .clip(CircleShape)
                                         .border(1.dp, BitVibeCyan.copy(alpha = 0.5f), CircleShape)
-                                        .clickable { musicController.setPlaybackSpeed((speed + 0.1f).coerceAtMost(2.0f)) },
+                                        .clickable { musicController.setPlaybackSpeed(speed + 0.1f) },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(Icons.Filled.Add, null, tint = Color.White, modifier = Modifier.size(16.dp))
@@ -445,13 +469,18 @@ fun PlayerScreen(
                         }
                     }
 
-                    // Equalizer + actions (right)
+                    // Equalizer toggle (right)
                     Card(
+                        onClick = { showEqualizer = !showEqualizer },
+                        enabled = equalizerBands.isNotEmpty(),
                         modifier = Modifier
                             .weight(1f)
                             .height(110.dp),
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            disabledContainerColor = MaterialTheme.colorScheme.surface
+                        ),
                         border = androidx.compose.foundation.BorderStroke(1.dp, BitVibeCyan.copy(alpha = 0.3f))
                     ) {
                         Column(
@@ -472,21 +501,18 @@ fun PlayerScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                                 Icon(
-                                    Icons.Outlined.OpenInFull,
-                                    null,
+                                    if (showEqualizer) Icons.Outlined.CloseFullscreen else Icons.Outlined.OpenInFull,
+                                    contentDescription = if (showEqualizer) "Hide equalizer" else "Show equalizer",
                                     tint = TextGrey,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
-                            // Action icons row
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly
-                            ) {
-                                Icon(Icons.Outlined.Bedtime, null, tint = TextGrey, modifier = Modifier.size(24.dp))
-                                Icon(Icons.Outlined.Label, null, tint = TextGrey, modifier = Modifier.size(24.dp))
-                                Icon(Icons.Outlined.QueueMusic, null, tint = TextGrey, modifier = Modifier.size(24.dp))
-                            }
+                            Text(
+                                text = if (equalizerBands.isEmpty()) "Available once playback starts"
+                                else "${equalizerBands.size} bands · tap to ${if (showEqualizer) "hide" else "adjust"}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextGrey
+                            )
                         }
                     }
                 }
@@ -494,12 +520,11 @@ fun PlayerScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // ── Full Equalizer (expandable) ─────────
-                val equalizerBands by musicController.equalizerBands.collectAsStateWithLifecycle()
-                if (equalizerBands.isNotEmpty()) {
+                if (showEqualizer && equalizerBands.isNotEmpty()) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         border = androidx.compose.foundation.BorderStroke(1.dp, BitVibeCyan.copy(alpha = 0.3f))
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
@@ -552,6 +577,25 @@ fun PlayerScreen(
         }
 
         Spacer(modifier = Modifier.height(32.dp))
+    }
+
+    val song = currentSong
+    if (showAddToPlaylist && song != null) {
+        AddToPlaylistDialog(song = song, onDismiss = { showAddToPlaylist = false })
+    }
+}
+
+private fun shareSong(context: android.content.Context, song: com.bitvibe.app.data.model.AudioFile) {
+    val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+        type = "audio/*"
+        putExtra(android.content.Intent.EXTRA_STREAM, song.contentUri)
+        putExtra(android.content.Intent.EXTRA_TEXT, "${song.title} — ${song.artist}")
+        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    try {
+        context.startActivity(android.content.Intent.createChooser(intent, "Share song"))
+    } catch (e: android.content.ActivityNotFoundException) {
+        android.widget.Toast.makeText(context, "No app available to share", android.widget.Toast.LENGTH_SHORT).show()
     }
 }
 

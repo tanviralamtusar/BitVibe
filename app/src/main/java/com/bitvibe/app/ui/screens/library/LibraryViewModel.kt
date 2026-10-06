@@ -21,7 +21,10 @@ class LibraryViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
-        scanMedia()
+        // Each screen gets its own ViewModel; only the first one needs to hit MediaStore.
+        viewModelScope.launch {
+            repository.scanMediaIfNeeded()
+        }
     }
 
     fun scanMedia() {
@@ -30,7 +33,8 @@ class LibraryViewModel @Inject constructor(
         }
     }
     
-    fun playSong(audioFile: AudioFile) {
-        musicController.play(audioFile)
+    /** Plays [audioFile] with [queue] loaded, so next/previous move through the list it came from. */
+    fun playSong(audioFile: AudioFile, queue: List<AudioFile> = listOf(audioFile)) {
+        musicController.play(audioFile, queue)
     }
 }

@@ -21,4 +21,8 @@ sealed class Screen(
 
     // ── Non-tab routes ────────────────────────────────
     object Settings : Screen("settings", "Settings", Icons.Outlined.Home, Icons.Filled.Home)
+    object PlaylistDetail : Screen("playlist/{playlistId}", "Playlist", Icons.Outlined.Home, Icons.Filled.Home) {
+        const val ARG_ID = "playlistId"
+        fun createRoute(playlistId: Long) = "playlist/$playlistId"
+    }
 }

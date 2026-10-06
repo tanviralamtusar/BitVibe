@@ -9,4 +9,6 @@ interface MediaRepository {
     fun getAudioByFolder(folderPath: String): Flow<List<AudioFile>>
     fun getAllFolders(): Flow<List<Folder>>
     suspend fun scanMedia()
+    /** Scans only if no scan has completed yet in this process. */
+    suspend fun scanMediaIfNeeded()
 }

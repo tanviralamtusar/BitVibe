@@ -28,7 +28,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.bitvibe.app.domain.player.MusicController
 import com.bitvibe.app.ui.theme.BitVibeCyan
-import com.bitvibe.app.ui.theme.DarkSurface
 import com.bitvibe.app.ui.theme.TextGrey
 
 @Composable
@@ -45,7 +44,7 @@ fun MiniPlayer(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(DarkSurface)
+            .background(MaterialTheme.colorScheme.surface)
             .clickable(onClick = onExpand)
     ) {
         // Progress bar at top
@@ -73,19 +72,19 @@ fun MiniPlayer(
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
+                // Placeholder underneath; covered when the album art loads.
+                Icon(
+                    Icons.Filled.MusicNote,
+                    contentDescription = null,
+                    tint = TextGrey,
+                    modifier = Modifier.size(20.dp)
+                )
                 if (currentSong?.albumArtUri != null) {
                     AsyncImage(
                         model = currentSong?.albumArtUri,
                         contentDescription = currentSong?.title,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Icon(
-                        Icons.Filled.MusicNote,
-                        contentDescription = null,
-                        tint = TextGrey,
-                        modifier = Modifier.size(20.dp)
                     )
                 }
             }

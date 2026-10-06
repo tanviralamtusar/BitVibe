@@ -6,15 +6,17 @@ import kotlinx.coroutines.flow.StateFlow
 interface MusicController {
     val isPlaying: StateFlow<Boolean>
     val currentSong: StateFlow<AudioFile?>
-    // val duration: StateFlow<Long>
-    // val position: StateFlow<Long>
 
-    fun play(audioFile: AudioFile)
+    /**
+     * Plays [audioFile]. When [queue] is given (and contains [audioFile]) the whole list is
+     * loaded so next/previous, shuffle and repeat-all work across it.
+     */
+    fun play(audioFile: AudioFile, queue: List<AudioFile> = listOf(audioFile))
     fun pause()
     fun resume()
     fun stop()
     fun togglePlayPause()
-    
+
     // Speed Control
     val playbackSpeed: StateFlow<Float>
     fun setPlaybackSpeed(speed: Float)
@@ -34,14 +36,14 @@ interface MusicController {
     fun seekTo(position: Long)
     fun skipToNext()
     fun skipToPrevious()
-    
+
     val shuffleModeEnabled: StateFlow<Boolean>
     val repeatMode: StateFlow<Int> // Player.REPEAT_MODE_OFF, ONE, ALL
-    
+
 
     fun toggleShuffleMode()
     fun toggleRepeatMode()
-    
+
     // Equalizer
     val equalizerBands: StateFlow<List<EqBand>>
     fun setBandLevel(bandId: Int, level: Int)

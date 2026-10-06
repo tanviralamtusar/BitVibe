@@ -34,14 +34,17 @@ fun BottomNavigationBar(navController: NavController) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp)
             .background(Color.Black)
-            .padding(top = 8.dp, bottom = 12.dp),
+            .navigationBarsPadding()
+            .height(64.dp)
+            .padding(top = 8.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
         items.forEach { screen ->
-            val isSelected = currentRoute == screen.route
+            // Playlist detail lives under the Library tab.
+            val isSelected = currentRoute == screen.route ||
+                (screen == Screen.Library && currentRoute == Screen.PlaylistDetail.route)
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,

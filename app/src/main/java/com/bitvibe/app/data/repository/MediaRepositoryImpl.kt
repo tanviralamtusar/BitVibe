@@ -35,6 +35,13 @@ class MediaRepositoryImpl @Inject constructor(
 
     override fun getAllFolders(): Flow<List<Folder>> = _folders.asStateFlow()
 
+    @Volatile
+    private var hasScanned = false
+
+    override suspend fun scanMediaIfNeeded() {
+        if (!hasScanned) scanMedia()
+    }
+
     override suspend fun scanMedia() = withContext(Dispatchers.IO) {
         val audioList = mutableListOf<AudioFile>()
         val folderMap = mutableMapOf<String, Int>()
@@ -70,11 +77,15 @@ class MediaRepositoryImpl @Inject constructor(
 
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idColumn)
-                    val title = cursor.getString(titleColumn)
+                    val path = cursor.getString(pathColumn) ?: ""
+                    val title = cursor.getString(titleColumn)?.takeIf { it.isNotBlank() }
+                        ?: File(path).nameWithoutExtension
+                    // MediaStore reports missing tags as null or "<unknown>".
                     val artist = cursor.getString(artistColumn)
+                        ?.takeUnless { it.isBlank() || it == MediaStore.UNKNOWN_STRING } ?: "Unknown artist"
                     val album = cursor.getString(albumColumn)
+                        ?.takeUnless { it.isBlank() || it == MediaStore.UNKNOWN_STRING } ?: ""
                     val duration = cursor.getLong(durationColumn)
-                    val path = cursor.getString(pathColumn)
                     val albumId = cursor.getLong(albumIdColumn)
 
                     val contentUri = ContentUris.withAppendedId(
@@ -82,8 +93,7 @@ class MediaRepositoryImpl @Inject constructor(
                         id
                     )
                     
-                    val sArtworkUri = Uri.parse("content://media/external/audio/albumart")
-                    val albumArtUri = ContentUris.withAppendedId(sArtworkUri, albumId)
+                    val albumArtUri = ContentUris.withAppendedId(ALBUM_ART_URI, albumId)
 
                     val audioFile = AudioFile(
                         id = id,
@@ -98,7 +108,7 @@ class MediaRepositoryImpl @Inject constructor(
                     audioList.add(audioFile)
 
                     // Folder logic
-                    val parentFile = File(path).parentFile
+                    val parentFile = path.takeIf { it.isNotEmpty() }?.let { File(it).parentFile }
                     if (parentFile != null) {
                         val folderPath = parentFile.absolutePath
                         val currentCount = folderMap.getOrDefault(folderPath, 0)
@@ -115,6 +125,11 @@ class MediaRepositoryImpl @Inject constructor(
         }
 
         _audioFiles.value = audioList
-        _folders.value = folders
+        _folders.value = folders.sortedBy { it.name.lowercase() }
+        hasScanned = true
+    }
+
+    private companion object {
+        val ALBUM_ART_URI: Uri = Uri.parse("content://media/external/audio/albumart")
     }
 }

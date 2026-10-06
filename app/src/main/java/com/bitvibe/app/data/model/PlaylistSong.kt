@@ -1,5 +1,6 @@
 package com.bitvibe.app.data.model
 
+import android.net.Uri
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -30,4 +31,15 @@ data class PlaylistSong(
     val contentUriString: String, 
     val albumArtUriString: String,
     val orderIndex: Int = 0
+)
+
+fun PlaylistSong.toAudioFile(): AudioFile = AudioFile(
+    id = audioId,
+    title = title,
+    artist = artist,
+    album = album,
+    duration = duration,
+    path = path,
+    albumArtUri = albumArtUriString.takeIf { it.isNotBlank() }?.let(Uri::parse),
+    contentUri = Uri.parse(contentUriString)
 )

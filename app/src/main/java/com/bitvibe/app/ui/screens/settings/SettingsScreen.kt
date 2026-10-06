@@ -18,34 +18,28 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bitvibe.app.BuildConfig
 import com.bitvibe.app.data.repository.SettingsRepository
 import com.bitvibe.app.ui.theme.BitVibeCyan
 import com.bitvibe.app.ui.theme.TextGrey
-import com.bitvibe.app.ui.theme.DarkBg
 
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel = hiltViewModel(),
-    onMusicFoldersClick: () -> Unit
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     var showThemeDialog by remember { mutableStateOf(false) }
     var showEqDialog by remember { mutableStateOf(false) }
 
-    val themeLabel = when (themeMode) {
-        SettingsRepository.THEME_SYSTEM -> "System"
-        SettingsRepository.THEME_LIGHT -> "Light"
-        SettingsRepository.THEME_DARK -> "Dark"
-        SettingsRepository.THEME_BLACK -> "Black"
-        else -> "System"
-    }
+    // BitVibe is a dark-only design; older "System"/"Light" values fall back to Dark.
+    val themeLabel = if (themeMode == SettingsRepository.THEME_BLACK) "Black (AMOLED)" else "Dark"
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBg)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
-            .padding(top = 48.dp)
+            .padding(top = 8.dp)
     ) {
         // Header
         Row(
@@ -71,7 +65,7 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Settings Groups
-        SettingsGroup(title = "Playback") {
+        SettingsGroup(title = "Appearance & Audio") {
             SettingsItem(
                 icon = Icons.Outlined.Palette,
                 title = "Theme",
@@ -90,7 +84,7 @@ fun SettingsScreen(
             SettingsItem(
                 icon = Icons.Outlined.Info,
                 title = "Version",
-                subtitle = "1.0.0",
+                subtitle = BuildConfig.VERSION_NAME,
                 onClick = { }
             )
         }
@@ -184,11 +178,10 @@ private fun ThemeSelectionDialog(
     onDismiss: () -> Unit
 ) {
     val themes = listOf(
-        SettingsRepository.THEME_SYSTEM to "System",
-        SettingsRepository.THEME_LIGHT to "Light",
         SettingsRepository.THEME_DARK to "Dark",
         SettingsRepository.THEME_BLACK to "Black (AMOLED)"
     )
+    val selectedTheme = if (currentTheme == SettingsRepository.THEME_BLACK) currentTheme else SettingsRepository.THEME_DARK
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -207,7 +200,7 @@ private fun ThemeSelectionDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
-                            selected = currentTheme == mode,
+                            selected = selectedTheme == mode,
                             onClick = { onThemeSelected(mode) },
                             colors = RadioButtonDefaults.colors(
                                 selectedColor = BitVibeCyan,
