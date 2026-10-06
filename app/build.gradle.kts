@@ -14,7 +14,8 @@ android {
         applicationId = "com.bitvibe.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
+        // CI passes -PversionCode=<run number> so every release installs over the previous one.
+        versionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
