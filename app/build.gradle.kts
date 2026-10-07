@@ -19,6 +19,16 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // YouTube Data API key for search: YOUTUBE_API_KEY in local.properties (Android Studio)
+        // or the environment (CI secret). Never commit the key itself.
+        val localProps = java.util.Properties().apply {
+            rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+        }
+        val youtubeApiKey = localProps.getProperty("YOUTUBE_API_KEY")
+            ?: System.getenv("YOUTUBE_API_KEY")
+            ?: ""
+        buildConfigField("String", "YOUTUBE_API_KEY", "\"$youtubeApiKey\"")
     }
 
     buildTypes {
@@ -91,6 +101,9 @@ dependencies {
 
     // Coil (Image Loading)
     implementation(libs.coil.compose)
+
+    // YouTube (official embedded player)
+    implementation(libs.youtube.player.core)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -12,6 +12,27 @@ Open the [Releases page](https://github.com/tanviralamtusar/BitVibe/releases), t
 `beatvibe-<version>-<build>.apk`, and open it on the phone. Allow "install unknown apps" for your
 browser when Android asks.
 
+## YouTube
+
+The **YouTube** tab searches YouTube and plays videos in YouTube's official embedded player, with
+favorites and "more from this channel". To follow YouTube's terms the player stays visible, keeps
+YouTube's ads and controls, and stops when you leave the app. Nothing is downloaded, and BeatVibe's
+equalizer, speed and A-B loop don't apply to YouTube videos.
+
+Search needs a free YouTube Data API key:
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create a project and enable
+   **YouTube Data API v3**.
+2. **Credentials → Create credentials → API key.** Under *Application restrictions* choose
+   **Android apps** and add package `com.bitvibe.app` with your release keystore's SHA-1
+   (`keytool -list -v -keystore bitvibe-release.jks`) — plus your debug SHA-1 for local builds.
+   Under *API restrictions* allow only YouTube Data API v3.
+3. Add the key as `YOUTUBE_API_KEY=...` in `local.properties` (Android Studio builds) and as the
+   `YOUTUBE_API_KEY` repository secret (GitHub Actions builds). Never commit it.
+
+Each search uses 100 of the default 10,000 daily quota units, so a key allows about 100 searches a
+day; repeat searches in a session are cached. Without a key the tab explains how to set it up.
+
 ## App updates
 
 Release builds update themselves from this repo's GitHub Releases (`data/update/UpdateManager.kt`):

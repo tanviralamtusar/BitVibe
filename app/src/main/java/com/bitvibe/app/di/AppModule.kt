@@ -54,13 +54,19 @@ abstract class AppModule {
                 context,
                 com.bitvibe.app.data.local.AppDatabase::class.java,
                 "bitvibe_db"
-            ).build()
+            ).addMigrations(com.bitvibe.app.data.youtube.MIGRATION_1_2).build()
         }
 
         @Provides
         @Singleton
         fun providePlaylistDao(db: com.bitvibe.app.data.local.AppDatabase): com.bitvibe.app.data.local.PlaylistDao {
             return db.playlistDao()
+        }
+
+        @Provides
+        @Singleton
+        fun provideYouTubeFavoriteDao(db: com.bitvibe.app.data.local.AppDatabase): com.bitvibe.app.data.youtube.YouTubeFavoriteDao {
+            return db.youTubeFavoriteDao()
         }
     }
 }

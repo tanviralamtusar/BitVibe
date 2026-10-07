@@ -17,6 +17,7 @@ accompanist = "0.34.0"
 coroutines = "1.9.0"
 datastore = "1.0.0"
 coil = "2.6.0"
+youtubePlayer = "12.1.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -64,6 +65,9 @@ androidx-datastore-preferences = { group = "androidx.datastore", name = "datasto
 
 # Coil (Image Loading)
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+
+# YouTube's official IFrame player in a WebView (android-youtube-player)
+youtube-player-core = { group = "com.pierfrancescosoffritti.androidyoutubeplayer", name = "core", version.ref = "youtubePlayer" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
