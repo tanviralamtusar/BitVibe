@@ -119,7 +119,7 @@ fun HomeScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = if (audioFiles.isEmpty()) "BitVibe Player" else "${audioFiles.size} songs on this device",
+                        text = if (audioFiles.isEmpty()) "BeatVibe Player" else "${audioFiles.size} songs on this device",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextGrey
                     )

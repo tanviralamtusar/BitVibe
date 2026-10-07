@@ -97,6 +97,11 @@ class MusicControllerImpl @Inject constructor(
                 }
                 updateCurrentSong(mediaItem)
                 _currentPosition.value = controller.currentPosition
+                updateQueueInfo(controller)
+            }
+
+            override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+                updateQueueInfo(controller)
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -132,6 +137,7 @@ class MusicControllerImpl @Inject constructor(
         _shuffleModeEnabled.value = controller.shuffleModeEnabled
         _repeatMode.value = controller.repeatMode
         updateCurrentSong(controller.currentMediaItem)
+        updateQueueInfo(controller)
         
         // Try to init EQ if player is already ready
         val sessionId = exoPlayer.audioSessionId
@@ -145,6 +151,11 @@ class MusicControllerImpl @Inject constructor(
         // Run a play request that arrived before the controller finished connecting.
         pendingAction?.invoke(controller)
         pendingAction = null
+    }
+
+    private fun updateQueueInfo(controller: MediaController) {
+        _queueIndex.value = controller.currentMediaItemIndex
+        _queueSize.value = controller.mediaItemCount
     }
 
     private fun updateCurrentSong(mediaItem: MediaItem?) {
@@ -350,6 +361,12 @@ class MusicControllerImpl @Inject constructor(
     override fun skipToPrevious() {
         mediaController?.seekToPrevious()
     }
+
+    private val _queueIndex = MutableStateFlow(0)
+    override val queueIndex: StateFlow<Int> = _queueIndex.asStateFlow()
+
+    private val _queueSize = MutableStateFlow(0)
+    override val queueSize: StateFlow<Int> = _queueSize.asStateFlow()
 
     private val _shuffleModeEnabled = MutableStateFlow(false)
     override val shuffleModeEnabled: StateFlow<Boolean> = _shuffleModeEnabled.asStateFlow()

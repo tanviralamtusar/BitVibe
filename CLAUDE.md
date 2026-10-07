@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-BitVibe is a native Android music player (Kotlin, Jetpack Compose, Media3, Hilt, Room) in `app/`.
+BeatVibe is a native Android music player (Kotlin, Jetpack Compose, Media3, Hilt, Room) in `app/`.
 
 ## Commands
 

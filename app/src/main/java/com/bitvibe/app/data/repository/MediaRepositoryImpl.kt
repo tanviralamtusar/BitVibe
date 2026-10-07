@@ -78,8 +78,10 @@ class MediaRepositoryImpl @Inject constructor(
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idColumn)
                     val path = cursor.getString(pathColumn) ?: ""
-                    val title = cursor.getString(titleColumn)?.takeIf { it.isNotBlank() }
-                        ?: File(path).nameWithoutExtension
+                    val title = cleanTitle(
+                        cursor.getString(titleColumn)?.takeIf { it.isNotBlank() }
+                            ?: File(path).nameWithoutExtension
+                    )
                     // MediaStore reports missing tags as null or "<unknown>".
                     val artist = cursor.getString(artistColumn)
                         ?.takeUnless { it.isBlank() || it == MediaStore.UNKNOWN_STRING } ?: "Unknown artist"
@@ -128,4 +130,8 @@ class MediaRepositoryImpl @Inject constructor(
         _folders.value = folders.sortedBy { it.name.lowercase() }
         hasScanned = true
     }
+
+    /** Untagged files get their file name as title; "1_A.M_Study_Session" reads better with spaces. */
+    private fun cleanTitle(raw: String): String =
+        if (raw.contains('_') && !raw.contains(' ')) raw.replace('_', ' ').trim() else raw.trim()
 }
