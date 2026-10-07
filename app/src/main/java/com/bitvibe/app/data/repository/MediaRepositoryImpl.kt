@@ -2,9 +2,9 @@ package com.bitvibe.app.data.repository
 
 import android.content.ContentUris
 import android.content.Context
-import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
+import com.bitvibe.app.data.art.AlbumArt
 import com.bitvibe.app.data.model.AudioFile
 import com.bitvibe.app.data.model.Folder
 import com.bitvibe.app.domain.repository.MediaRepository
@@ -93,7 +93,7 @@ class MediaRepositoryImpl @Inject constructor(
                         id
                     )
                     
-                    val albumArtUri = ContentUris.withAppendedId(ALBUM_ART_URI, albumId)
+                    val albumArtUri = AlbumArt.uriFor(id, albumId)
 
                     val audioFile = AudioFile(
                         id = id,
@@ -127,9 +127,5 @@ class MediaRepositoryImpl @Inject constructor(
         _audioFiles.value = audioList
         _folders.value = folders.sortedBy { it.name.lowercase() }
         hasScanned = true
-    }
-
-    private companion object {
-        val ALBUM_ART_URI: Uri = Uri.parse("content://media/external/audio/albumart")
     }
 }

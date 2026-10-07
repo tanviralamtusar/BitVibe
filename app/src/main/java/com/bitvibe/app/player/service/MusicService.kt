@@ -3,12 +3,17 @@ package com.bitvibe.app.player.service
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Player
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.CacheBitmapLoader
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import com.bitvibe.app.data.art.AlbumArtBitmapLoader
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
+@OptIn(UnstableApi::class)
 @AndroidEntryPoint
 class MusicService : MediaSessionService() {
 
@@ -26,7 +31,10 @@ class MusicService : MediaSessionService() {
         
         // Let's actually build the media session here.
         // The player needs to be passed to the session.
-        mediaSession = MediaSession.Builder(this, player).build()
+        mediaSession = MediaSession.Builder(this, player)
+            // Per-track covers (bitvibe-art:// URIs) for the notification and lock screen.
+            .setBitmapLoader(CacheBitmapLoader(AlbumArtBitmapLoader(this)))
+            .build()
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
