@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -22,8 +24,8 @@ android {
 
         // YouTube Data API key for search: YOUTUBE_API_KEY in local.properties (Android Studio)
         // or the environment (CI secret). Never commit the key itself.
-        val localProps = java.util.Properties().apply {
-            rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+        val localProps = Properties().apply {
+            rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { stream -> load(stream) }
         }
         val youtubeApiKey = localProps.getProperty("YOUTUBE_API_KEY")
             ?: System.getenv("YOUTUBE_API_KEY")
