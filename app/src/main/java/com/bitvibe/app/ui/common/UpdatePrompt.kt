@@ -85,8 +85,8 @@ fun UpdatePrompt(updateManager: UpdateManager) {
             title = { Text("Allow updates", color = MaterialTheme.colorScheme.onSurface) },
             text = {
                 Text(
-                    "To install updates, allow BitVibe to install apps. You only need to do this once; " +
-                        "come back to BitVibe afterwards and the update continues.",
+                    "To install updates, allow BeatVibe to install apps. You only need to do this once; " +
+                        "come back to BeatVibe afterwards and the update continues.",
                     color = TextGrey
                 )
             },
@@ -133,7 +133,7 @@ private fun UpdateDialog(
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(
-                    "BitVibe ${update.versionName} (build ${update.build})",
+                    "BeatVibe ${update.versionName} (build ${update.build})",
                     style = MaterialTheme.typography.titleSmall,
                     color = BitVibeCyan
                 )
@@ -143,7 +143,7 @@ private fun UpdateDialog(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "Your playlists and settings are kept. BitVibe closes while it installs; open it again afterwards.",
+                    "Your playlists and settings are kept. BeatVibe closes while it installs; open it again afterwards.",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextGrey
                 )

@@ -61,7 +61,7 @@ private fun PermissionRequestScreen(onRequestPermission: () -> Unit) {
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "BitVibe",
+                text = "BeatVibe",
                 style = MaterialTheme.typography.displayLarge,
                 color = BitVibeCyan
             )
@@ -77,7 +77,7 @@ private fun PermissionRequestScreen(onRequestPermission: () -> Unit) {
             Spacer(modifier = Modifier.height(48.dp))
 
             Text(
-                text = "BitVibe needs access to your music files to play your favorite tracks.",
+                text = "BeatVibe needs access to your music files to play your favorite tracks.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextGrey,
                 textAlign = TextAlign.Center,

@@ -37,6 +37,10 @@ interface MusicController {
     fun skipToNext()
     fun skipToPrevious()
 
+    /** Position of the current song in the queue (0-based) and the queue length. */
+    val queueIndex: StateFlow<Int>
+    val queueSize: StateFlow<Int>
+
     val shuffleModeEnabled: StateFlow<Boolean>
     val repeatMode: StateFlow<Int> // Player.REPEAT_MODE_OFF, ONE, ALL
 

@@ -1,6 +1,7 @@
 package com.bitvibe.app.data.model
 
 import android.net.Uri
+import com.bitvibe.app.data.art.AlbumArt
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -40,6 +41,7 @@ fun PlaylistSong.toAudioFile(): AudioFile = AudioFile(
     album = album,
     duration = duration,
     path = path,
-    albumArtUri = albumArtUriString.takeIf { it.isNotBlank() }?.let(Uri::parse),
+    // Older rows stored MediaStore's album-art URI; per-track art is more reliable.
+    albumArtUri = AlbumArt.uriFor(audioId),
     contentUri = Uri.parse(contentUriString)
 )

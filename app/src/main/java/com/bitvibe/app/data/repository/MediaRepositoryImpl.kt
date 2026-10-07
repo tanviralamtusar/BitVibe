@@ -2,9 +2,9 @@ package com.bitvibe.app.data.repository
 
 import android.content.ContentUris
 import android.content.Context
-import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
+import com.bitvibe.app.data.art.AlbumArt
 import com.bitvibe.app.data.model.AudioFile
 import com.bitvibe.app.data.model.Folder
 import com.bitvibe.app.domain.repository.MediaRepository
@@ -78,8 +78,10 @@ class MediaRepositoryImpl @Inject constructor(
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idColumn)
                     val path = cursor.getString(pathColumn) ?: ""
-                    val title = cursor.getString(titleColumn)?.takeIf { it.isNotBlank() }
-                        ?: File(path).nameWithoutExtension
+                    val title = cleanTitle(
+                        cursor.getString(titleColumn)?.takeIf { it.isNotBlank() }
+                            ?: File(path).nameWithoutExtension
+                    )
                     // MediaStore reports missing tags as null or "<unknown>".
                     val artist = cursor.getString(artistColumn)
                         ?.takeUnless { it.isBlank() || it == MediaStore.UNKNOWN_STRING } ?: "Unknown artist"
@@ -93,7 +95,7 @@ class MediaRepositoryImpl @Inject constructor(
                         id
                     )
                     
-                    val albumArtUri = ContentUris.withAppendedId(ALBUM_ART_URI, albumId)
+                    val albumArtUri = AlbumArt.uriFor(id, albumId)
 
                     val audioFile = AudioFile(
                         id = id,
@@ -129,7 +131,7 @@ class MediaRepositoryImpl @Inject constructor(
         hasScanned = true
     }
 
-    private companion object {
-        val ALBUM_ART_URI: Uri = Uri.parse("content://media/external/audio/albumart")
-    }
+    /** Untagged files get their file name as title; "1_A.M_Study_Session" reads better with spaces. */
+    private fun cleanTitle(raw: String): String =
+        if (raw.contains('_') && !raw.contains(' ')) raw.replace('_', ' ').trim() else raw.trim()
 }

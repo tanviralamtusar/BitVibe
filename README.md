@@ -1,12 +1,15 @@
-# BitVibe
+# BeatVibe
 
 An Android music player for musicians and learners: A-B segment looping, pitch-preserved speed
 control, a 5-band equalizer, playlists, and browsing by artist, album and folder.
 
+Formerly BitVibe. The Android package id stays `com.bitvibe.app`: changing it would make Android treat
+BeatVibe as a different app, so existing installs couldn't update to it.
+
 ## Install on a phone
 
 Open the [Releases page](https://github.com/tanviralamtusar/BitVibe/releases), take the latest
-`bitvibe-<version>-<build>.apk`, and open it on the phone. Allow "install unknown apps" for your
+`beatvibe-<version>-<build>.apk`, and open it on the phone. Allow "install unknown apps" for your
 browser when Android asks.
 
 ## App updates
@@ -20,9 +23,9 @@ Release builds update themselves from this repo's GitHub Releases (`data/update/
    when you leave the app and nothing is playing. You come back to the new version.
 3. **The first update, and Android 11 and older:** Android requires one confirmation tap, so the app
    shows **Update ready → Install**. The very first time it also asks you to allow "Install unknown
-   apps" for BitVibe.
+   apps" for BeatVibe.
 
-Silent installs work once BitVibe is its own "installer of record". An APK installed from a browser
+Silent installs work once BeatVibe is its own "installer of record". An APK installed from a browser
 or file manager is owned by that app, so the first update needs the tap and later ones don't.
 
 **Settings → Updates** shows the version, has **Check for updates**, and an **Auto-update** switch.
@@ -50,18 +53,18 @@ Pull requests into `main` run the same build and upload the APK as an artifact, 
 key once, before sharing the app, and add it in **Settings → Secrets and variables → Actions → Secrets**:
 
 ```bash
-keytool -genkeypair -v -keystore bitvibe-release.jks -alias bitvibe -keyalg RSA -keysize 2048 -validity 10000
-base64 -w0 bitvibe-release.jks   # paste the output into ANDROID_KEYSTORE_BASE64
+keytool -genkeypair -v -keystore beatvibe-release.jks -alias beatvibe -keyalg RSA -keysize 2048 -validity 10000
+base64 -w0 beatvibe-release.jks   # paste the output into ANDROID_KEYSTORE_BASE64
 ```
 
 | Secret | Value |
 | --- | --- |
 | `ANDROID_KEYSTORE_BASE64` | the keystore, base64-encoded |
 | `ANDROID_KEYSTORE_PASSWORD` | keystore password |
-| `ANDROID_KEY_ALIAS` | `bitvibe` (the alias above) |
+| `ANDROID_KEY_ALIAS` | `beatvibe` (the alias above) |
 | `ANDROID_KEY_PASSWORD` | key password |
 
-Keep `bitvibe-release.jks` and its passwords backed up outside the repo. If you lose them, you can
+Keep `beatvibe-release.jks` and its passwords backed up outside the repo. If you lose them, you can
 never publish an update to the same app.
 
 **Versions.** Bump `versionName` in `app/build.gradle.kts` for a new user-visible version; the build

@@ -25,10 +25,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.bitvibe.app.data.model.AudioFile
 import com.bitvibe.app.data.model.Playlist
 import com.bitvibe.app.ui.screens.playlists.PlaylistViewModel
@@ -230,6 +232,7 @@ fun LibraryScreen(
                         SongGroupRow(
                             group = group,
                             icon = groupIcon,
+                            circular = selectedFilter == FILTER_ARTISTS,
                             expanded = expanded,
                             onClick = { expandedGroup = if (expanded) null else group.key },
                             onPlay = { libraryViewModel.playSong(group.songs.first(), group.songs) }
@@ -276,6 +279,7 @@ private fun LibraryEmptyText(text: String) {
 private fun SongGroupRow(
     group: SongGroup,
     icon: ImageVector,
+    circular: Boolean,
     expanded: Boolean,
     onClick: () -> Unit,
     onPlay: () -> Unit
@@ -287,14 +291,23 @@ private fun SongGroupRow(
             .padding(start = 20.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Cover of the group's first song that has one; the icon shows until it loads (or if none do).
         Box(
             modifier = Modifier
                 .size(56.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(if (circular) CircleShape else RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
             Icon(icon, contentDescription = null, tint = TextGrey, modifier = Modifier.size(28.dp))
+            group.songs.firstOrNull()?.albumArtUri?.let { art ->
+                AsyncImage(
+                    model = art,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
