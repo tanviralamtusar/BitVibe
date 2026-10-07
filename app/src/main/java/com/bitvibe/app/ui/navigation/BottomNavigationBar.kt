@@ -25,6 +25,7 @@ fun BottomNavigationBar(navController: NavController) {
     val items = listOf(
         Screen.Home,
         Screen.Explore,
+        Screen.YouTube,
         Screen.Library
     )
 

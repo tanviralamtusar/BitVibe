@@ -19,6 +19,7 @@ import com.google.common.util.concurrent.MoreExecutors
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -67,6 +68,15 @@ class MusicControllerImpl @Inject constructor(
         
         // Also add listener directly to ExoPlayer for audio session
         exoPlayer.addListener(object : Player.Listener {
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                // Some files can't be clipped (e.g. not seekable); loop them the old way instead.
+                val clip = activeClip ?: return
+                Log.w("MusicController", "Clipped loop failed, using seek-based loop", error)
+                clipUnsupported += clip.original.mediaId
+                restoreClip(clip, clip.startMs)
+                exoPlayer.prepare()
+            }
+
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_READY && !equalizerInitialized) {
                     val sessionId = exoPlayer.audioSessionId
@@ -96,7 +106,7 @@ class MusicControllerImpl @Inject constructor(
                     clearLoop()
                 }
                 updateCurrentSong(mediaItem)
-                _currentPosition.value = controller.currentPosition
+                _currentPosition.value = absolutePosition()
                 updateQueueInfo(controller)
             }
 
@@ -106,7 +116,7 @@ class MusicControllerImpl @Inject constructor(
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 // MediaStore durations can be missing; fill in the real one once known.
-                if (playbackState == Player.STATE_READY) {
+                if (playbackState == Player.STATE_READY && activeClip == null) {
                     val song = _currentSong.value ?: return
                     val duration = controller.duration
                     if (duration != C.TIME_UNSET && duration > 0 && duration != song.duration) {
@@ -120,7 +130,8 @@ class MusicControllerImpl @Inject constructor(
             }
 
             override fun onRepeatModeChanged(repeatMode: Int) {
-                _repeatMode.value = repeatMode
+                // While an A-B clip loops the player is in REPEAT_ONE; keep showing the user's mode.
+                if (activeClip == null) _repeatMode.value = repeatMode
             }
             
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
@@ -217,6 +228,12 @@ class MusicControllerImpl @Inject constructor(
             return
         }
 
+        // A loop clip belongs to the old queue; drop it (and restore the user's repeat mode)
+        // before replacing the items, so it can't later "restore" into the new queue.
+        loopSyncJob?.cancel()
+        activeClip?.let { exoPlayer.repeatMode = it.savedRepeatMode }
+        activeClip = null
+
         queuedSongs.clear()
         items.forEach { queuedSongs[it.id.toString()] = it }
 
@@ -277,6 +294,7 @@ class MusicControllerImpl @Inject constructor(
     override val currentPosition: StateFlow<Long> = _currentPosition.asStateFlow()
 
     override fun setLoopStart(ms: Long) {
+        scheduleLoopSync()
         _loopStart.value = ms
         // A new A at or after B invalidates the old segment.
         val end = _loopEnd.value
@@ -293,52 +311,143 @@ class MusicControllerImpl @Inject constructor(
         _loopEnd.value = ms
         // Setting B completes the segment, so start looping right away.
         _loopMode.value = true
+        scheduleLoopSync()
     }
 
     override fun clearLoop() {
         _loopStart.value = null
         _loopEnd.value = null
         _loopMode.value = false
+        // Restore right away (not debounced): the track may be changing.
+        loopSyncJob?.cancel()
+        syncLoopClip()
     }
 
     override fun toggleLoopMode() {
-        val enable = !_loopMode.value
-        _loopMode.value = enable
-        if (enable) {
-            val start = _loopStart.value
-            val end = _loopEnd.value
-            val pos = _currentPosition.value
-            if (start != null && end != null && (pos < start || pos >= end)) {
-                seekTo(start)
-            }
+        _loopMode.value = !_loopMode.value
+        scheduleLoopSync()
+    }
+
+    // ── Gapless A-B loop ─────────────────────────────────────────
+    //
+    // Seeking back to A when the position passes B always leaves an audible gap (the decoder is
+    // flushed and re-buffered) and overshoots by up to a polling interval. Instead, while the loop
+    // is on, the current queue item is swapped for a copy clipped to [A, B] and the player is put
+    // in REPEAT_ONE: ExoPlayer pre-buffers the next pass, so B flows straight into A.
+    // Positions from the player are then relative to A; absolutePosition() maps them back.
+
+    private data class ActiveClip(
+        val index: Int,
+        val original: MediaItem,
+        val startMs: Long,
+        val endMs: Long,
+        val savedRepeatMode: Int
+    )
+
+    private var activeClip: ActiveClip? = null
+    private var loopSyncJob: Job? = null
+    /** Media ids whose files couldn't be clipped; they use the seek-based fallback loop. */
+    private val clipUnsupported = mutableSetOf<String>()
+
+    /** Debounced so 0.1 s nudges in quick succession re-buffer once, not every tap. */
+    private fun scheduleLoopSync() {
+        loopSyncJob?.cancel()
+        loopSyncJob = scope.launch {
+            kotlinx.coroutines.delay(LOOP_SYNC_DEBOUNCE_MS)
+            syncLoopClip()
         }
+    }
+
+    private fun syncLoopClip() {
+        val start = _loopStart.value
+        val end = _loopEnd.value
+        val clip = activeClip
+        val mediaId = exoPlayer.currentMediaItem?.mediaId
+        val wanted = _loopMode.value && start != null && end != null && end - start >= MIN_LOOP_MS &&
+            mediaId != null && mediaId !in clipUnsupported
+
+        if (!wanted) {
+            if (clip != null) restoreClip(clip, absolutePosition())
+            return
+        }
+        if (clip != null && clip.startMs == start && clip.endMs == end) return
+
+        val index = exoPlayer.currentMediaItemIndex
+        if (clip != null && clip.index != index) {
+            restoreClip(clip, null)
+        }
+        val original = activeClip?.original
+            ?: queuedSongs[mediaId]?.toMediaItem()
+            ?: exoPlayer.currentMediaItem
+            ?: return
+        val absPos = absolutePosition()
+        val clipped = original.buildUpon()
+            .setClippingConfiguration(
+                MediaItem.ClippingConfiguration.Builder()
+                    .setStartPositionMs(start!!)
+                    .setEndPositionMs(end!!)
+                    .build()
+            )
+            .build()
+
+        activeClip = ActiveClip(
+            index = index,
+            original = original,
+            startMs = start,
+            endMs = end,
+            savedRepeatMode = activeClip?.savedRepeatMode ?: exoPlayer.repeatMode
+        )
+        exoPlayer.replaceMediaItem(index, clipped)
+        exoPlayer.repeatMode = Player.REPEAT_MODE_ONE
+        // Keep playing from where we are if that's inside the loop, otherwise start at A.
+        exoPlayer.seekTo(index, if (absPos in start until end) absPos - start else 0L)
+        _currentPosition.value = absolutePosition()
+    }
+
+    /** Puts the full track back; [absolutePositionMs] (if given) is where to continue. */
+    private fun restoreClip(clip: ActiveClip, absolutePositionMs: Long?) {
+        activeClip = null
+        if (clip.index >= exoPlayer.mediaItemCount) return
+        val wasCurrent = exoPlayer.currentMediaItemIndex == clip.index
+        exoPlayer.replaceMediaItem(clip.index, clip.original)
+        exoPlayer.repeatMode = clip.savedRepeatMode
+        if (wasCurrent && absolutePositionMs != null) {
+            exoPlayer.seekTo(clip.index, absolutePositionMs)
+        }
+        _repeatMode.value = clip.savedRepeatMode
+    }
+
+    /** Position in the full track, accounting for an active clip. */
+    private fun absolutePosition(): Long {
+        val clip = activeClip
+        val offset = if (clip != null && clip.index == exoPlayer.currentMediaItemIndex) clip.startMs else 0L
+        return exoPlayer.currentPosition + offset
     }
     
     // Polling for Position & Loop Check (Adaptive polling for efficiency)
     init {
         scope.launch {
             while (true) {
-                val controller = mediaController
-                val playing = controller?.isPlaying == true
-                if (controller != null) {
-                    val currentMs = controller.currentPosition
+                val playing = exoPlayer.isPlaying
+                if (mediaController != null) {
+                    val currentMs = absolutePosition()
                     _currentPosition.value = currentMs
-                    
-                    // Loop Logic
-                    if (playing && _loopMode.value) {
+
+                    // Fallback loop for files that can't be clipped (the gapless clip handles the rest).
+                    val fallbackLoop = playing && _loopMode.value && activeClip == null
+                    if (fallbackLoop) {
                         val start = _loopStart.value
                         val end = _loopEnd.value
-                        
                         if (start != null && end != null && end > start && currentMs >= end) {
-                            controller.seekTo(start)
+                            exoPlayer.seekTo(start)
                             _currentPosition.value = start
                         }
                     }
                 }
-                // Adaptive polling: fast while A-B looping (tight loop points), slower when idle
+                // Adaptive polling: fast only for the fallback loop, otherwise just UI updates
                 val pollingDelay = when {
                     !playing -> 250L
-                    _loopMode.value && _loopStart.value != null && _loopEnd.value != null -> 20L
+                    _loopMode.value && activeClip == null && _loopEnd.value != null -> 20L
                     else -> 100L
                 }
                 kotlinx.coroutines.delay(pollingDelay)
@@ -349,7 +458,19 @@ class MusicControllerImpl @Inject constructor(
 
     // Player Controls
     override fun seekTo(position: Long) {
-        mediaController?.seekTo(position)
+        val clip = activeClip
+        if (clip != null && clip.index == exoPlayer.currentMediaItemIndex) {
+            if (position in clip.startMs until clip.endMs) {
+                exoPlayer.seekTo(position - clip.startMs)
+            } else {
+                // Seeking outside A-B turns the loop off (the points are kept).
+                _loopMode.value = false
+                loopSyncJob?.cancel()
+                restoreClip(clip, position)
+            }
+        } else {
+            mediaController?.seekTo(position)
+        }
         // Reflect the seek immediately, even while paused.
         _currentPosition.value = position
     }
@@ -383,13 +504,19 @@ class MusicControllerImpl @Inject constructor(
 
     override fun toggleRepeatMode() {
         val controller = mediaController ?: return
-        val newMode = when (controller.repeatMode) {
+        val clip = activeClip
+        val current = clip?.savedRepeatMode ?: controller.repeatMode
+        val newMode = when (current) {
             Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
             Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
             Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_OFF
             else -> Player.REPEAT_MODE_OFF
         }
-        controller.repeatMode = newMode
+        if (clip != null) {
+            activeClip = clip.copy(savedRepeatMode = newMode) // applied when the loop ends
+        } else {
+            controller.repeatMode = newMode
+        }
         _repeatMode.value = newMode
     }
 
@@ -510,5 +637,7 @@ class MusicControllerImpl @Inject constructor(
         const val EXTRA_DURATION = "DURATION"
         const val MIN_SPEED = 0.25f
         const val MAX_SPEED = 3.0f
+        const val MIN_LOOP_MS = 200L
+        const val LOOP_SYNC_DEBOUNCE_MS = 150L
     }
 }

@@ -106,6 +106,9 @@ fun MainApp(musicController: com.bitvibe.app.domain.player.MusicController) {
                 composable(Screen.Explore.route) {
                     com.bitvibe.app.ui.screens.explore.ExploreScreen()
                 }
+                composable(Screen.YouTube.route) {
+                    com.bitvibe.app.ui.screens.youtube.YouTubeScreen()
+                }
                 composable(Screen.Library.route) {
                     com.bitvibe.app.ui.screens.library.LibraryScreen(
                         onPlaylistClick = { playlistId ->

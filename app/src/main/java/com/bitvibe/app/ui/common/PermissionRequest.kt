@@ -3,8 +3,9 @@ package com.bitvibe.app.ui.common
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.MusicNote
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.bitvibe.app.R
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -51,11 +52,10 @@ private fun PermissionRequestScreen(onRequestPermission: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(40.dp)
         ) {
-            Icon(
-                imageVector = Icons.Outlined.MusicNote,
-                contentDescription = null,
-                tint = BitVibeCyan,
-                modifier = Modifier.size(80.dp)
+            Image(
+                painter = painterResource(R.drawable.beatvibe_logo),
+                contentDescription = "BeatVibe logo",
+                modifier = Modifier.size(96.dp)
             )
 
             Spacer(modifier = Modifier.height(24.dp))

@@ -50,6 +50,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Unit tests and release build
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }} # optional; YouTube search is disabled without it
         # Compiling the release variant is the type check; there is no separate lint gate.
         run: |
           chmod +x gradlew
